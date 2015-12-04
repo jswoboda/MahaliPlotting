@@ -6,6 +6,7 @@ import os, glob
 import scipy as sp
 import matplotlib.pyplot as plt
 import matplotlib
+import pdb
 from mpl_toolkits.basemap import Basemap, cm
 from GeoData.plotting import scatterGD, slice2DGD
 from GeoData.GeoData import GeoData 
@@ -34,9 +35,10 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
         Geolonlim[0] = min(min(TECGD.dataloc[:,1]),Geolonlim[0])
         Geolonlim[1] = max(max(TECGD.dataloc[:,1]),Geolonlim[1])
     
-    
-    interpsavedfile = os.path.join(allskydir,'interp'+wlstr+'.h5')
-    if reinterp or ~os.path.isfile(interpsavedfile):
+    latlim2 = [45.,75.]
+    lonlim2 = [-185.,-125.]
+    interpsavedfile = os.path.join(allskydir,'interp'+wl+'.h5')
+    if reinterp or (not os.path.isfile(interpsavedfile)):
         pfalla = sp.array([65.136667,-147.447222,689.])
     
         flist558 = glob.glob(os.path.join(allskydir,wlstr))
@@ -63,6 +65,7 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
         allsky_data.write_h5(interpsavedfile)
     else:
         allsky_data = GeoData.read_h5(interpsavedfile)
+        allskytime=allsky_data.times[:,0]
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_axes([0.1,0.1,0.8,0.8])
     # create polar stereographic Basemap instance.
@@ -80,29 +83,27 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
     parhand=m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
     mrdhand = m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
     
-    tectime = sp.arange(TECtime(1),TECtime(2),60.*tint)
+    tectime = sp.arange(TECtime[0],TECtime[1],60.*tint)
     nptimes= len(tectime)    
     
      
     allskylist = []
     gpslist = []
-    tlistkeep = sp.zeros(len(TECtime)-1,dtype=bool)
-    for itasn in range(len(TECtime)-1):
-        plthand = sp.zeros(len(TEClist))+1;
+    tlistkeep = sp.zeros(nptimes-1,dtype=bool)
+    for itasn in range(nptimes-1):
         techlist = []
         tlistemp=True
-        itback=TECtime[itasn]
-        itfor = TECtime[itasn]
-        itas = sp.where(allskytime>=itback and allskytime<itfor)[0]
+        itback=tectime[itasn]
+        itfor = tectime[itasn+1]
+        itas = sp.where(sp.logical_and(allskytime>=itback, allskytime<itfor))[0]
         if len(itas)==0:
             continue
         
         for k in range(len(TEClist)):
             Geoone=TEClist[k];
             timevec = Geoone.times[:,0];
-            itback = tectime[itasn];
-            itfor = tectime[itasn+1];
-            itgps = sp.where(timevec>=itback and timevec<itfor)[0]
+            
+            itgps = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
             if len(itgps)>0:
                 tlistemp=False
             techlist.append(itgps)
@@ -110,8 +111,9 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
             continue
         allskylist.append(itas) 
         gpslist.append(techlist)
-        plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig)
-        plt.close(fig)
+        tlistkeep[itasn]=True
+    plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig)
+    plt.close(fig)
         
 def plotgpsnoptics(optic_class,gps_class_list,opticallist,GPSlist,plotdir,m,ax,fig):
     
@@ -121,29 +123,30 @@ def plotgpsnoptics(optic_class,gps_class_list,opticallist,GPSlist,plotdir,m,ax,f
     plotnum=0
     for (optic_times,gps_cur)in zip(opticallist,GPSlist):
         gpshands = []        
-        for (igps,igpslist) in zip(gps_class_list,gps_cur):
-            
-            if len(igps)==0:
+        for igpsn, (igps,igpslist) in enumerate(zip(gps_class_list,gps_cur)):
+            print('Plotting GPS data from rec {0} of {1}'.format(igpsn,len(gps_cur)))
+            # check if there's anything to plot
+            if len(igpslist)==0:
                 continue
             
-            (sctter,scatercb) = scatterGD(igps,'z',3.5e5,vbounds=[0,15],time = igpslist,gkey = None,cmap='vTEC',fig=fig,
+            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='jet',fig=fig,
                   ax=ax,title='',cbar=True,err=.1,m=m)
-            gpshands.append(sctter[0])
+            gpshands.append(sctter)
             
         #change he z order
         minz = gpshands[0]
         for i in reversed(gpshands):
-            i.set_zorder(i.get_zorder+1)
+            i.set_zorder(i.get_zorder()+1)
         
         for iop in optic_times:
         
-            (slice3,cbar3) = slice2DGD(optic_class,'z',150,[100,800],title='',
-                                time = iop,cmap='Greys',gkey = 'optical',fig=fig,ax=ax,cbar=False,m=m)
-            slice3[0].set_zorder(minz)
+            (slice3,cbar3) = slice2DGD(optic_class,'alt',150,[100,800],title='',
+                                time = iop,cmap='Greys',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
+            slice3.set_zorder(minz)
             print('Ploting {0} of {1} plots')
             plt.savefig(os.path.join(plotdir,fmstr+'ASwGPS.png'.format(plotnum)))
             plotnum+=1
-            slice3[0].remove()
+            slice3.remove()
         for i in reversed(gpshands):
             i.remove()
     
