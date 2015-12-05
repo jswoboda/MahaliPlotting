@@ -144,7 +144,7 @@ def plotgpsnoptics(optic_class,gps_class_list,opticallist,GPSlist,plotdir,m,ax,f
                                 time = iop,cmap='Greys',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
             slice3.set_zorder(minz)
             print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
-            plt.savefig(os.path.join(plotdir,fmstr+'ASwGPS.png'.format(plotnum)))
+            plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASwGPS.png'))
             plotnum+=1
             slice3.remove()
         for i in reversed(gpshands):
