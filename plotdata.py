@@ -143,7 +143,7 @@ def plotgpsnoptics(optic_class,gps_class_list,opticallist,GPSlist,plotdir,m,ax,f
             (slice3,cbar3) = slice2DGD(optic_class,'alt',150,[100,800],title='',
                                 time = iop,cmap='Greys',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
             slice3.set_zorder(minz)
-            print('Ploting {0} of {1} plots')
+            print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
             plt.savefig(os.path.join(plotdir,fmstr+'ASwGPS.png'.format(plotnum)))
             plotnum+=1
             slice3.remove()
