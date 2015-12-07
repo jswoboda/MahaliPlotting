@@ -66,13 +66,14 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
     else:
         allsky_data = GeoData.read_h5(interpsavedfile)
         allskytime=allsky_data.times[:,0]
+    #%% Make map
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_axes([0.1,0.1,0.8,0.8])
     # create polar stereographic Basemap instance.
     m = Basemap(projection='merc',lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),\
         lat_ts=sp.mean(latlim2),llcrnrlat=latlim2[0],urcrnrlat=latlim2[1],\
         llcrnrlon=lonlim2[0],urcrnrlon=lonlim2[1],\
-        rsphere=6371200.,resolution='i')
+        rsphere=6371200.,resolution='i',ax=ax)
     # draw coastlines, state and country boundaries, edge of map.
     #m.drawcoastlines()
 #    m.drawstates()
@@ -82,7 +83,8 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
     parallels = sp.arange(latlim2[0],latlim2[1],5.)
     parhand=m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
     mrdhand = m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
-    
+    plt.hold(True)
+    #%% make lists for plotting
     tectime = sp.arange(TECtime[0],TECtime[1],60.*tint)
     nptimes= len(tectime)    
     
@@ -115,15 +117,15 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
     plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig)
     plt.close(fig)
         
-def plotgpsnoptics(optic_class,gps_class_list,opticallist,GPSlist,plotdir,m,ax,fig):
+def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
     
-    maxplot = len(optic_class.times)
+    maxplot = len(allsky_data.times)
     strlen = sp.ceil(sp.log10(maxplot))+1
     fmstr = '{0:0>'+str(strlen)+'}_'
     plotnum=0
-    for (optic_times,gps_cur)in zip(opticallist,GPSlist):
+    for (optic_times,gps_cur)in zip(allskylist,gpslist):
         gpshands = []        
-        for igpsn, (igps,igpslist) in enumerate(zip(gps_class_list,gps_cur)):
+        for igpsn, (igps,igpslist) in enumerate(zip(TEClist,gps_cur)):
             print('Plotting GPS data from rec {0} of {1}'.format(igpsn,len(gps_cur)))
             # check if there's anything to plot
             if len(igpslist)==0:
@@ -140,8 +142,8 @@ def plotgpsnoptics(optic_class,gps_class_list,opticallist,GPSlist,plotdir,m,ax,f
         
         for iop in optic_times:
         
-            (slice3,cbar3) = slice2DGD(optic_class,'alt',150,[100,800],title='',
-                                time = iop,cmap='Greys',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
+            (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,[100,800],title='',
+                                time = iop,cmap='Blues',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
             slice3.set_zorder(minz)
             print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
             plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASwGPS.png'))
