@@ -4,12 +4,14 @@
 """
 import os, glob,getopt,sys
 import scipy as sp
-import matplotlib.pyplot as plt
 import matplotlib
 import pdb
-from mpl_toolkits.basemap import Basemap, cm
-from GeoData.plotting import scatterGD, slice2DGD
+matplotlib.use('Agg') # for use where you're running on a command line
+import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
+from GeoData.plotting import scatterGD, slice2DGD,insertinfo
 from GeoData.GeoData import GeoData
+import seaborn as sns
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS
 
 
@@ -118,13 +120,16 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
     plt.close(fig)
 
 def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
-
+    sns.set_style("whitegrid")
+    sns.set_context("notebook")
     maxplot = len(allsky_data.times)
-    strlen = sp.ceil(sp.log10(maxplot))+1
+    strlen = int(sp.ceil(sp.log10(maxplot))+1)
     fmstr = '{0:0>'+str(strlen)+'}_'
     plotnum=0
     for (optic_times,gps_cur)in zip(allskylist,gpslist):
         gpshands = []
+        gpsmin = sp.inf
+        gpsmax = -sp.inf
         for igpsn, (igps,igpslist) in enumerate(zip(TEClist,gps_cur)):
             print('Plotting GPS data from rec {0} of {1}'.format(igpsn,len(gps_cur)))
             # check if there's anything to plot
@@ -133,20 +138,24 @@ def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
 
             (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='jet',fig=fig,
                   ax=ax,title='',cbar=True,err=.1,m=m)
+            gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
+            gpsmax = sp.maximum(igps.times[igpslist,1].max(),gpsmax)
             gpshands.append(sctter)
-
+        scatercb.set_label('vTEC in TECu')
         #change he z order
-        minz = gpshands[0]
+        minz = gpshands[0].get_zorder()
         for i in reversed(gpshands):
             i.set_zorder(i.get_zorder()+1)
 
         for iop in optic_times:
 
             (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,[100,800],title='',
-                                time = iop,cmap='Blues',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
+                                time = iop,cmap='Greens',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
             slice3.set_zorder(minz)
+            plt.title(insertinfo('GPS $tmdy $thmsehms',posix=gpsmin,posixend=gpsmax)+'\n'+insertinfo('All Sky $tmdy $thmsehms',posix=allsky_data.times[iop,0],posixend=allsky_data.times[iop,1]))
             print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
             plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASwGPS.png'))
+            
             plotnum+=1
             slice3.remove()
         for i in reversed(gpshands):
