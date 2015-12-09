@@ -5,13 +5,12 @@
 import os, glob,getopt,sys
 import scipy as sp
 import matplotlib
-import pdb
 matplotlib.use('Agg') # for use where you're running on a command line
+import pdb
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from GeoData.plotting import scatterGD, slice2DGD,insertinfo
 from GeoData.GeoData import GeoData
-import seaborn as sns
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS
 
 
@@ -120,8 +119,6 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
     plt.close(fig)
 
 def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
-    sns.set_style("whitegrid")
-    sns.set_context("notebook")
     maxplot = len(allsky_data.times)
     strlen = int(sp.ceil(sp.log10(maxplot))+1)
     fmstr = '{0:0>'+str(strlen)+'}_'
@@ -148,7 +145,6 @@ def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
             i.set_zorder(i.get_zorder()+1)
 
         for iop in optic_times:
-
             (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,[100,800],title='',
                                 time = iop,cmap='Greens',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
             slice3.set_zorder(minz)
