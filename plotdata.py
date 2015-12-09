@@ -151,7 +151,7 @@ def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
             plt.title(insertinfo('GPS $tmdy $thmsehms',posix=gpsmin,posixend=gpsmax)+'\n'+insertinfo('All Sky $tmdy $thmsehms',posix=allsky_data.times[iop,0],posixend=allsky_data.times[iop,1]))
             print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
             plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASwGPS.png'))
-            
+
             plotnum+=1
             slice3.remove()
         for i in reversed(gpshands):
@@ -160,7 +160,7 @@ def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
 if __name__== '__main__':
     argv = sys.argv[1:]
 
-    outstr = 'Planeproc.py -a <all skypath> -w <wavelength>, -i <ionofile dir>,-t <time interval>,  -p <plotdirectory>-r <type y to remake data>'
+    outstr = 'plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>,  -p <plotdirectory> -r <type y to reinterpolate all sky data>'
 
 
     try:
