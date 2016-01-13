@@ -8,6 +8,9 @@ import matplotlib
 matplotlib.use('Agg') # for use where you're running on a command line
 import pdb
 import matplotlib.pyplot as plt
+import pytz
+from datetime import datetime
+from dateutil import parser
 from mpl_toolkits.basemap import Basemap
 from GeoData.plotting import scatterGD, slice2DGD,insertinfo
 from GeoData.GeoData import GeoData
@@ -157,10 +160,17 @@ def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
         for i in reversed(gpshands):
             i.remove()
 
-def getSRIhdf5(filename):
+def getSRIhdf5(filename,times,heights):
     """ """
-    paramstr = ['Ne','Ti','Ti']
+    paramstr = ['Ne','Ti','Te']
     SRIh5 = GeoData(readSRI_h5,(filename,paramstr))
+    (dt1,dt2) = parser.parse(times[0]),parser.parse(times[1])
+    dt1 =dt1.replace(tzinfo=pytz.utc)
+    dt2 = dt2.replace(tzinfo=pytz.utc)
+    dt1ts = (dt1 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
+    dt2ts = (dt2 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
+    
+    
 if __name__== '__main__':
     argv = sys.argv[1:]
 
