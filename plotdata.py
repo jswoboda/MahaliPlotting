@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 from GeoData.plotting import scatterGD, slice2DGD,insertinfo
 from GeoData.GeoData import GeoData
-from GeoData.utilityfuncs import readIonofiles, readAllskyFITS
+from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 
 
 def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
@@ -157,6 +157,10 @@ def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
         for i in reversed(gpshands):
             i.remove()
 
+def getSRIhdf5(filename):
+    """ """
+    paramstr = ['Ne','Ti','Ti']
+    SRIh5 = GeoData(readSRI_h5,(filename,paramstr))
 if __name__== '__main__':
     argv = sys.argv[1:]
 
