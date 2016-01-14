@@ -160,7 +160,7 @@ def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
         for i in reversed(gpshands):
             i.remove()
 
-def getSRIhdf5(filename,times,heights):
+def getSRIhdf5(filename,times,pnheights,xycoords,newcordname,vbounds,pltdir =None):
     """ """
     paramstr = ['Ne','Ti','Te']
     SRIh5 = GeoData(readSRI_h5,(filename,paramstr))
@@ -170,11 +170,55 @@ def getSRIhdf5(filename,times,heights):
     dt1ts = (dt1 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
     dt2ts = (dt2 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
     
+    timelist = sp.where((SRIh5.times[:,0]>=dt1ts)&(SRIh5.times[:,0]<=dt2ts))[0]
     
+    if len(timelist)==0:
+        return
+    
+    SRIh5 = SRIh5.timeslice(timelist)
+    
+    hset = sp.array([i[1] for i in pnheights])
+    uh,uhs =sp.unique(hset,return_inverse=True)
+    
+        # interpolation
+    ncoords = xycoords.shape[0]
+    uhall = sp.repeat(uh,ncoords)   
+    
+    coords = sp.tile(xycoords,(len(uh),1))
+    coords = sp.column_stack((coords,uhall))
+     
+    
+    SRIh5.interpolate(coords,newcordname,method='linear')
+    
+
+    maxplot = len(timelist)
+    strlen = int(sp.ceil(sp.log10(maxplot))+1)
+    fmstr = '{0:0>'+str(strlen)+'}_'
+    for itn in range(len(timelist)):
+        fig = plt.figure(figsize=(8,8))
+        axmat = fig.add_subplot(1,len(pnheights),1)
+        axvec = axmat.flatten()
+        pltlist = []
+        cblist = []
+        for icase,(iparam,iheight) in enumerate(pnheights):
+           (plth,cbh) =  slice2DGD(SRIh5,'z',uhs[icase],vbounds=vbounds[icase],time = itn,gkey = iparam,cmap='jet',fig=fig,
+                  ax=axvec[icase],title=iparam,cbar=True)
+           pltlist.append(plth)
+           cblist.append(cbh)
+        outstr = insertinfo('ISR Data at $tmdy $thmsehms',posix=SRIh5.times[itn,0],posixend = SRIh5.times[itn,1])
+        plt.suptitle(outstr)
+        fname = 'SRIData'+fmstr.format(itn)+'.png'
+        if not pltdir is None:
+            fname=os.path.join(pltdir,fname)
+        plt.savefig(fname)
+        plt.close(fig)
+        
+        
+        
 if __name__== '__main__':
     argv = sys.argv[1:]
 
-    outstr = 'plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>,  -p <plotdirectory> -r <type y to reinterpolate all sky data>'
+    outstr = 'plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>,  -p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>'
 
 
     try:
