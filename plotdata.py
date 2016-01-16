@@ -169,52 +169,62 @@ def getSRIhdf5(filename,times,pnheights,xycoords,newcordname,vbounds,pltdir =Non
     dt2 = dt2.replace(tzinfo=pytz.utc)
     dt1ts = (dt1 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
     dt2ts = (dt2 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
-    
+
     timelist = sp.where((SRIh5.times[:,0]>=dt1ts)&(SRIh5.times[:,0]<=dt2ts))[0]
-    
+
     if len(timelist)==0:
         return
-    
+
     SRIh5 = SRIh5.timeslice(timelist)
-    
+
     hset = sp.array([i[1] for i in pnheights])
     uh,uhs =sp.unique(hset,return_inverse=True)
-    
+
         # interpolation
     ncoords = xycoords.shape[0]
-    uhall = sp.repeat(uh,ncoords)   
-    
+    uhall = sp.repeat(uh,ncoords)
+
     coords = sp.tile(xycoords,(len(uh),1))
     coords = sp.column_stack((coords,uhall))
-     
-    
+
+
     SRIh5.interpolate(coords,newcordname,method='linear')
-    
+
 
     maxplot = len(timelist)
     strlen = int(sp.ceil(sp.log10(maxplot))+1)
     fmstr = '{0:0>'+str(strlen)+'}_'
     for itn in range(len(timelist)):
-        fig = plt.figure(figsize=(8,8))
-        axmat = fig.add_subplot(1,len(pnheights),1)
+        fig, axmat = plt.subplots(nrows=len(pnheights),ncols=1)
         axvec = axmat.flatten()
-        pltlist = []
-        cblist = []
+
+
         for icase,(iparam,iheight) in enumerate(pnheights):
            (plth,cbh) =  slice2DGD(SRIh5,'z',uhs[icase],vbounds=vbounds[icase],time = itn,gkey = iparam,cmap='jet',fig=fig,
-                  ax=axvec[icase],title=iparam,cbar=True)
-           pltlist.append(plth)
-           cblist.append(cbh)
+                  ax=axvec[icase],title=iparam + ' at {0} km'.format(iheight),cbar=True)
+           if iparam.lower()!='ne':
+               ntics = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
+               cbh.set_ticks(ntics)
+               cbh.formatter.fmt = '%d'
+               cbh.update_ticks()
+           else:
+               ntics = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
+               cbh.set_ticks(ntics)
+               cbh.formatter.fmt = '%.1e'
+               cbh.update_ticks()
         outstr = insertinfo('ISR Data at $tmdy $thmsehms',posix=SRIh5.times[itn,0],posixend = SRIh5.times[itn,1])
         plt.suptitle(outstr)
         fname = 'SRIData'+fmstr.format(itn)+'.png'
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.85)
         if not pltdir is None:
             fname=os.path.join(pltdir,fname)
+        print 'Plotting '+fname
         plt.savefig(fname)
         plt.close(fig)
-        
-        
-        
+
+
+
 if __name__== '__main__':
     argv = sys.argv[1:]
 
