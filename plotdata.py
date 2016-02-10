@@ -266,4 +266,4 @@ if __name__== '__main__':
     if cmdrun:
         matplotlib.use('Agg') # for use where you're running on a command line
 
-    main(allskydir,ionofdir,plotdir,wl = wl,tint=tint,reinterp=remakealldata)
+    main(os.path.expanduser(allskydir),os.path.expanduser(ionofdir),os.path.expanduser(plotdir),wl = wl,tint=tint,reinterp=remakealldata)
