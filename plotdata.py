@@ -17,7 +17,7 @@ from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 
 
-def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
+def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=None):
 
     wlstr ='*_0'+wl+'_*.FITS'
 
@@ -26,18 +26,20 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
     TEClist = []
     TECfiles = glob.glob(os.path.join(ionofdir,'*.iono'))
     TECtime = [sp.Inf,-sp.Inf];
-    Geolatlim = [sp.Inf,-sp.Inf];
-    Geolonlim = [sp.Inf,-sp.Inf];
+#    Geolatlim = [sp.Inf,-sp.Inf];
+#    Geolonlim = [sp.Inf,-sp.Inf];
     for ifile in TECfiles:
         TECGD = GeoData(readIonofiles,(ifile,))
+        if timelim is not None:
+            TECGD.timereduce(timelim)
         TEClist.append(TECGD)
         TECtime[0] = min(min(TECGD.times[:,0]),TECtime[0])
         TECtime[1] = max(max(TECGD.times[:,0]),TECtime[1])
-        Geolatlim[0] = min(min(TECGD.dataloc[:,0]),Geolatlim[0])
-        Geolatlim[1] = max(max(TECGD.dataloc[:,0]),Geolatlim[1])
-
-        Geolonlim[0] = min(min(TECGD.dataloc[:,1]),Geolonlim[0])
-        Geolonlim[1] = max(max(TECGD.dataloc[:,1]),Geolonlim[1])
+#        Geolatlim[0] = min(min(TECGD.dataloc[:,0]),Geolatlim[0])
+#        Geolatlim[1] = max(max(TECGD.dataloc[:,0]),Geolatlim[1])
+#
+#        Geolonlim[0] = min(min(TECGD.dataloc[:,1]),Geolonlim[0])
+#        Geolonlim[1] = max(max(TECGD.dataloc[:,1]),Geolonlim[1])
 
     latlim2 = [45.,75.]
     lonlim2 = [-185.,-125.]
@@ -47,7 +49,8 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
 
         flist558 = glob.glob(os.path.join(allskydir,wlstr))
         allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_DASC_20110112_AZ_10deg.FITS','PKR_DASC_20110112_EL_10deg.FITS',150.,pfalla))
-
+        if timelim is not None:
+            allsky_data.timereduce(timelim)
             # reduce the size of the allskydata
         allskytime = allsky_data.times[:,0]
         allsky_data=allsky_data.timeslice(sp.where(sp.logical_and(allskytime>=TECtime[0],allskytime<TECtime[1] ))[0])
@@ -69,6 +72,8 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False):
         allsky_data.write_h5(interpsavedfile)
     else:
         allsky_data = GeoData.read_h5(interpsavedfile)
+        if timelim is not None:
+            allsky_data.timereduce(timelim)
         allskytime=allsky_data.times[:,0]
     #%% Make map
     fig = plt.figure(figsize=(8,8))
@@ -293,6 +298,7 @@ if __name__== '__main__':
         sys.exit(2)
 
     remakealldata = False
+    timedict={}
     for opt, arg in opts:
         if opt == '-h':
             print(outstr)
@@ -308,6 +314,8 @@ if __name__== '__main__':
             tint=float(arg)
         elif opt in ("-p", "--pdir"):
             plotdir=arg
+        elif opt in ("-d","--date"):
+            
         elif opt in ('-r', "--re"):
             if arg.lower() == 'y':
                 remakealldata = True
