@@ -227,8 +227,63 @@ def getSRIhdf5(filename,times,pnheights,xycoords,newcordname,vbounds,pltdir =Non
 
 if __name__== '__main__':
     argv = sys.argv[1:]
+    outstr = ''' 
+             Usage: 'plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>,  -d <date>, -b <begining time>, -e <endtime>,-p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>'
 
-    outstr = 'plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>,  -p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>'
+             or 
+             
+             python plotdata.py -h
+             
+             This script will run Mahali Plotting software. The user needs to 
+             specify the locations of the different types of data and the time 
+             limits if they don't want all of the data processed. 
+             
+                          
+             Manditory Arguments to run code, for help just use the -h option. 
+             
+             -f These will be the possible strings for the argument and the  
+                function they correspond to, that will be used ish shown.
+                 
+                 spectrums: makespectrums, This will create the ISR spectrums
+                 
+                 radardata :makeradardata, This will make the radar data and
+                     form the ACF estimates. If the raw radar data exists then 
+                     the user must use the -r option on the command line and set 
+                     it to y.
+                     
+                 fitting :fitdata, This will apply the fitter to the data in 
+                 the ACF folder of the base directory.
+                 
+                 fittingmat :fitdata,This will apply the fitter to the data in 
+                 the ACFMat folder of the base directory.
+                 
+                 fittinginv :fitdata,This will apply the fitter to the data in 
+                 the ACFInv folder of the base directory.
+                 
+                 applymat :applymat, This wil create and apply a matrix  
+                 formulation of thespace-time ambiguity function to ISR spectrums.
+                 
+                 
+                 all - This will run the commands from using the spectrums, radardata, 
+                     and fitting
+                     
+            -i The base directory that will contain all of the data. This directory 
+                must contain a directory called Origparams with h5 files to run 
+                the full simulation. The user can also start with a directory 
+                from a later stage of the simulation instead though.
+                
+            -c The configuration used for the simulation. Can be an ini file or
+                a pickle file.
+                
+            Optional arguments
+            
+            -r If a y follows this then the raw radar data will be remade. If
+                this is not used the radar data will only be made if it does
+                not exist in the file first.
+            
+             Example:
+             python runsim.py -f radardata -f fitting -i ~/DATA/ExampleLongPulse -c ~/DATA/Example -r y'''
+    outstr = 'plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>, -d <date>, -b <begining time>, -e <endtime>, -p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>'
 
 
     try:
