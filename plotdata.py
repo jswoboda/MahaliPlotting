@@ -19,63 +19,14 @@ from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 
 def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=None):
 
-    wlstr ='*_0'+wl+'_*.FITS'
+    
 
-
-
-    TEClist = []
-    TECfiles = glob.glob(os.path.join(ionofdir,'*.iono'))
-    TECtime = [sp.Inf,-sp.Inf];
-#    Geolatlim = [sp.Inf,-sp.Inf];
-#    Geolonlim = [sp.Inf,-sp.Inf];
-    for ifile in TECfiles:
-        TECGD = GeoData(readIonofiles,(ifile,))
-        if timelim is not None:
-            TECGD.timereduce(timelim)
-        TEClist.append(TECGD)
-        TECtime[0] = min(min(TECGD.times[:,0]),TECtime[0])
-        TECtime[1] = max(max(TECGD.times[:,0]),TECtime[1])
-#        Geolatlim[0] = min(min(TECGD.dataloc[:,0]),Geolatlim[0])
-#        Geolatlim[1] = max(max(TECGD.dataloc[:,0]),Geolatlim[1])
-#
-#        Geolonlim[0] = min(min(TECGD.dataloc[:,1]),Geolonlim[0])
-#        Geolonlim[1] = max(max(TECGD.dataloc[:,1]),Geolonlim[1])
 
     latlim2 = [45.,75.]
     lonlim2 = [-185.,-125.]
-    interpsavedfile = os.path.join(allskydir,'interp'+wl+'.h5')
-    if reinterp or (not os.path.isfile(interpsavedfile)):
-        pfalla = sp.array([65.136667,-147.447222,689.])
-
-        flist558 = glob.glob(os.path.join(allskydir,wlstr))
-        allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_DASC_20110112_AZ_10deg.FITS','PKR_DASC_20110112_EL_10deg.FITS',150.,pfalla))
-        if timelim is not None:
-            allsky_data.timereduce(timelim)
-            # reduce the size of the allskydata
-        allskytime = allsky_data.times[:,0]
-        allsky_data=allsky_data.timeslice(sp.where(sp.logical_and(allskytime>=TECtime[0],allskytime<TECtime[1] ))[0])
-        allskytime=allsky_data.times[:,0]
-        latlim2 = [45.,75.]
-        lonlim2 = [-185.,-125.]
-        xcoords = allsky_data.__changecoords__('WGS84')
-        latlim=[xcoords[:,0].min(),xcoords[:,0].max()]
-        lonlim=[xcoords[:,1].min(),xcoords[:,1].max()]
-        nlat = 256
-        nlon = 256
-
-        latvec = sp.linspace(latlim[0],latlim[1],nlat)
-        lonvec = sp.linspace(lonlim[0],lonlim[1],nlon)
-        [LATM,LONM] = sp.meshgrid(latvec,lonvec)
-
-        newcoords = sp.column_stack((LATM.flatten(),LONM.flatten(),150.*sp.ones(LONM.size)))
-        allsky_data.interpolate(newcoords,'WGS84',method='linear',twodinterp=True)
-        allsky_data.write_h5(interpsavedfile)
-    else:
-        allsky_data = GeoData.read_h5(interpsavedfile)
-        if timelim is not None:
-            allsky_data.timereduce(timelim)
-        allskytime=allsky_data.times[:,0]
-    #%% Make map
+    
+    
+        #%% Make map
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_axes([0.1,0.1,0.8,0.8])
     # create polar stereographic Basemap instance.
@@ -93,40 +44,155 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
     parhand=m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
     mrdhand = m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
     plt.hold(True)
+    isallsky=False
+    isgps = False
+    
+    if ionofdir is not  None:
+        isgps=True
+        TEClist = []
+        TECfiles = glob.glob(os.path.join(ionofdir,'*.iono'))
+        TECtime = [sp.Inf,-sp.Inf];
+    #    Geolatlim = [sp.Inf,-sp.Inf];
+    #    Geolonlim = [sp.Inf,-sp.Inf];
+        for ifile in TECfiles:
+            TECGD = GeoData(readIonofiles,(ifile,))
+            if timelim is not None:
+                TECGD.timereduce(timelim)
+            TEClist.append(TECGD)
+            TECtime[0] = min(min(TECGD.times[:,0]),TECtime[0])
+            TECtime[1] = max(max(TECGD.times[:,0]),TECtime[1])
+    #        Geolatlim[0] = min(min(TECGD.dataloc[:,0]),Geolatlim[0])
+    #        Geolatlim[1] = max(max(TECGD.dataloc[:,0]),Geolatlim[1])
+    #
+    #        Geolonlim[0] = min(min(TECGD.dataloc[:,1]),Geolonlim[0])
+    #        Geolonlim[1] = max(max(TECGD.dataloc[:,1]),Geolonlim[1])
+
+    if allskydir is not None:
+        isallsky=True
+   
+        wlstr ='*_0'+wl+'_*.FITS'
+        interpsavedfile = os.path.join(allskydir,'interp'+wl+'.h5')
+        if reinterp or (not os.path.isfile(interpsavedfile)):
+            pfalla = sp.array([65.136667,-147.447222,689.])
+    
+            flist558 = glob.glob(os.path.join(allskydir,wlstr))
+            allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_DASC_20110112_AZ_10deg.FITS','PKR_DASC_20110112_EL_10deg.FITS',150.,pfalla))
+            if timelim is not None:
+                allsky_data.timereduce(timelim)
+                # reduce the size of the allskydata
+            allskytime = allsky_data.times[:,0]
+            allsky_data=allsky_data.timeslice(sp.where(sp.logical_and(allskytime>=TECtime[0],allskytime<TECtime[1] ))[0])
+            allskytime=allsky_data.times[:,0]
+            latlim2 = [45.,75.]
+            lonlim2 = [-185.,-125.]
+            xcoords = allsky_data.__changecoords__('WGS84')
+            latlim=[xcoords[:,0].min(),xcoords[:,0].max()]
+            lonlim=[xcoords[:,1].min(),xcoords[:,1].max()]
+            nlat = 256
+            nlon = 256
+    
+            latvec = sp.linspace(latlim[0],latlim[1],nlat)
+            lonvec = sp.linspace(lonlim[0],lonlim[1],nlon)
+            [LATM,LONM] = sp.meshgrid(latvec,lonvec)
+    
+            newcoords = sp.column_stack((LATM.flatten(),LONM.flatten(),150.*sp.ones(LONM.size)))
+            allsky_data.interpolate(newcoords,'WGS84',method='linear',twodinterp=True)
+            allsky_data.write_h5(interpsavedfile)
+        else:
+            allsky_data = GeoData.read_h5(interpsavedfile)
+            if timelim is not None:
+                allsky_data.timereduce(timelim)
+            allskytime=allsky_data.times[:,0]
+
+    
+    
     #%% make lists for plotting
     tectime = sp.arange(TECtime[0],TECtime[1],60.*tint)
     nptimes= len(tectime)
 
+    if isallsky and isgps:
+        allskylist = []
+        gpslist = []
+        tlistkeep = sp.zeros(nptimes-1,dtype=bool)
+        for itasn in range(nptimes-1):
+            techlist = []
+            tlistemp=True
+            itback=tectime[itasn]
+            itfor = tectime[itasn+1]
+            itas = sp.where(sp.logical_and(allskytime>=itback, allskytime<itfor))[0]
+            if len(itas)==0:
+                continue
+    
+            for k in range(len(TEClist)):
+                Geoone=TEClist[k];
+                timevec = Geoone.times[:,0];
+    
+                itgps = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
+                if len(itgps)>0:
+                    tlistemp=False
+                techlist.append(itgps)
+            if tlistemp:
+                continue
+            allskylist.append(itas)
+            gpslist.append(techlist)
+            tlistkeep[itasn]=True
 
-    allskylist = []
-    gpslist = []
-    tlistkeep = sp.zeros(nptimes-1,dtype=bool)
-    for itasn in range(nptimes-1):
-        techlist = []
-        tlistemp=True
-        itback=tectime[itasn]
-        itfor = tectime[itasn+1]
-        itas = sp.where(sp.logical_and(allskytime>=itback, allskytime<itfor))[0]
-        if len(itas)==0:
-            continue
-
-        for k in range(len(TEClist)):
-            Geoone=TEClist[k];
-            timevec = Geoone.times[:,0];
-
-            itgps = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
-            if len(itgps)>0:
-                tlistemp=False
-            techlist.append(itgps)
-        if tlistemp:
-            continue
-        allskylist.append(itas)
-        gpslist.append(techlist)
-        tlistkeep[itasn]=True
-    plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig)
+        plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig)
+    elif isgps:
+        gpslist = []
+        tlistkeep = sp.zeros(nptimes-1,dtype=bool)
+        for itasn in range(nptimes-1):
+            techlist = []
+            tlistemp=True
+            itback=tectime[itasn]
+            itfor = tectime[itasn+1]
+                
+            for k in range(len(TEClist)):
+                Geoone=TEClist[k];
+                timevec = Geoone.times[:,0];
+    
+                itgps = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
+                if len(itgps)>0:
+                    tlistemp=False
+                techlist.append(itgps)
+            if tlistemp:
+                continue
+            gpslist.append(techlist)
+            tlistkeep[itasn]=True
+        plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig)
+    elif isallsky:            
+        plotopticsonly(allsky_data,plotdir,m,ax,fig)
+    
     plt.close(fig)
+    
+def plotgpsonly(TEClist,plotdir,m,ax,fig):
+    maxplot = len(allsky_data.times)
+    strlen = int(sp.ceil(sp.log10(maxplot))+1)
+    fmstr = '{0:0>'+str(strlen)+'}_'
+    plotnum=0
+    for (optic_times,gps_cur)in zip(allskylist,gpslist):
+        gpshands = []
+        gpsmin = sp.inf
+        gpsmax = -sp.inf
+        for igpsn, (igps,igpslist) in enumerate(zip(TEClist,gps_cur)):
+            print('Plotting GPS data from rec {0} of {1}'.format(igpsn,len(gps_cur)))
+            # check if there's anything to plot
+            if len(igpslist)==0:
+                continue
 
-def plotgpsnoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
+            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='jet',fig=fig,
+                  ax=ax,title='',cbar=True,err=.1,m=m)
+            gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
+            gpsmax = sp.maximum(igps.times[igpslist,1].max(),gpsmax)
+            gpshands.append(sctter)
+        scatercb.set_label('vTEC in TECu')
+        #change he z order
+        minz = gpshands[0].get_zorder()
+        for i in reversed(gpshands):
+            i.set_zorder(i.get_zorder()+1)
+def plotopticsonly(allsky_data,plotdir,m,ax,fig):
+    
+def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
     maxplot = len(allsky_data.times)
     strlen = int(sp.ceil(sp.log10(maxplot))+1)
     fmstr = '{0:0>'+str(strlen)+'}_'
