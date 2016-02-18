@@ -180,7 +180,7 @@ def plotgpsonly(TEClist,plotdir,m,ax,fig):
             if len(igpslist)==0:
                 continue
 
-            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='jet',fig=fig,
+            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
                   ax=ax,title='',cbar=True,err=.1,m=m)
             gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
             gpsmax = sp.maximum(igps.times[igpslist,1].max(),gpsmax)
@@ -191,6 +191,23 @@ def plotgpsonly(TEClist,plotdir,m,ax,fig):
         for i in reversed(gpshands):
             i.set_zorder(i.get_zorder()+1)
 def plotopticsonly(allsky_data,plotdir,m,ax,fig):
+    """ """
+    
+    optictimes = allsky_data.times
+    plotnum=0
+    for iop in range(len(optictimes)):
+        (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,[100,800],title='',
+                            time = iop,cmap='Greens',gkey = 'image',fig=fig,ax=ax,cbar=True,m=m)
+                            
+        cbar3.ax.yaxis.set_ticks_position('left')
+
+        slice3.set_zorder(minz)
+        plt.title(insertinfo('All Sky $tmdy $thmsehms',posix=allsky_data.times[iop,0],posixend=allsky_data.times[iop,1]))
+        print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
+        plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASonly.png'))
+
+        plotnum+=1
+        slice3.remove()
     
 def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
     maxplot = len(allsky_data.times)
@@ -207,7 +224,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
             if len(igpslist)==0:
                 continue
 
-            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='jet',fig=fig,
+            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
                   ax=ax,title='',cbar=True,err=.1,m=m)
             gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
             gpsmax = sp.maximum(igps.times[igpslist,1].max(),gpsmax)
@@ -220,7 +237,9 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
 
         for iop in optic_times:
             (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,[100,800],title='',
-                                time = iop,cmap='Greens',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
+                                time = iop,cmap='Greys',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
+            cbaras = plt.colorbar(slice3,orientation='horizontal')
+            cbaras.set_label('All Sky Scale')
             slice3.set_zorder(minz)
             plt.title(insertinfo('GPS $tmdy $thmsehms',posix=gpsmin,posixend=gpsmax)+'\n'+insertinfo('All Sky $tmdy $thmsehms',posix=allsky_data.times[iop,0],posixend=allsky_data.times[iop,1]))
             print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
@@ -364,28 +383,45 @@ if __name__== '__main__':
         sys.exit(2)
 
     remakealldata = False
-    timedict={}
+    allskydir=None
+    ionofdir=None
+    
+    wl='558'
+    timelist=[]
+    
     for opt, arg in opts:
         if opt == '-h':
             print(outstr)
             sys.exit()
         elif opt in ("-i", "--ifile"):
-            ionofdir = arg
+            ionofdir = os.path.expanduser(arg)
 
         elif opt in ("-w", "--wlen"):
             wl = arg
         elif opt in ("-a", "--asky"):
-            allskydir=arg
+            allskydir=os.path.expanduser(arg)
         elif opt in ("-t", "--tin"):
             tint=float(arg)
         elif opt in ("-p", "--pdir"):
-            plotdir=arg
+            plotdir=os.path.expanduser(arg)
         elif opt in ("-d","--date"):
-            
+            timelist[0]=opt
+        elif opt in ("-b","--begtime"):
+            timelist[1]=opt
+        elif opt in ("-e","--endtime"):
+            timelist[2]=opt
         elif opt in ('-r', "--re"):
             if arg.lower() == 'y':
                 remakealldata = True
-
+    if None in timelist:
+        timelim=None
+    else:
+        (dt1,dt2) = parser.parse(timelist[0]+ ' '+timelist[1]),parser.parse(timelist[0]+ ' '+timelist[2])
+        dt1 =dt1.replace(tzinfo=pytz.utc)
+        dt2 = dt2.replace(tzinfo=pytz.utc)
+        dt1ts = (dt1 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
+        dt2ts = (dt2 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
+        timelim=[dt1ts,dt2ts]
 #    plotdir = os.path.expanduser('~/Documents/python/mahali/plots10172015')
     if not os.path.isdir(plotdir):
         os.mkdir(plotdir)
@@ -395,4 +431,4 @@ if __name__== '__main__':
     if cmdrun:
         matplotlib.use('Agg') # for use where you're running on a command line
 
-    main(os.path.expanduser(allskydir),os.path.expanduser(ionofdir),os.path.expanduser(plotdir),wl = wl,tint=tint,reinterp=remakealldata)
+    main(allskydir,ionofdir,plotdir,wl = wl,tint=tint,reinterp=remakealldata,timelim)
