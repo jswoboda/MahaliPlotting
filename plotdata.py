@@ -56,8 +56,12 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
     #    Geolonlim = [sp.Inf,-sp.Inf];
         for ifile in TECfiles:
             TECGD = GeoData(readIonofiles,(ifile,))
+            
             if timelim is not None:
                 TECGD.timereduce(timelim)
+                
+            if len(TECGD.times)==0:
+                continue
             TEClist.append(TECGD)
             TECtime[0] = min(min(TECGD.times[:,0]),TECtime[0])
             TECtime[1] = max(max(TECGD.times[:,0]),TECtime[1])
@@ -377,7 +381,7 @@ if __name__== '__main__':
 
 
     try:
-        opts, args = getopt.gnu_getopt(argv,"ha:w:i:t:r:p:")
+        opts, args = getopt.gnu_getopt(argv,"ha:w:i:t:r:p:d:b:e:")
     except getopt.GetoptError:
         print(outstr)
         sys.exit(2)
@@ -387,7 +391,7 @@ if __name__== '__main__':
     ionofdir=None
     
     wl='558'
-    timelist=[]
+    timelist=[None]*3
     
     for opt, arg in opts:
         if opt == '-h':
@@ -405,11 +409,11 @@ if __name__== '__main__':
         elif opt in ("-p", "--pdir"):
             plotdir=os.path.expanduser(arg)
         elif opt in ("-d","--date"):
-            timelist[0]=opt
+            timelist[0]=arg
         elif opt in ("-b","--begtime"):
-            timelist[1]=opt
+            timelist[1]=arg
         elif opt in ("-e","--endtime"):
-            timelist[2]=opt
+            timelist[2]=arg
         elif opt in ('-r', "--re"):
             if arg.lower() == 'y':
                 remakealldata = True
@@ -430,5 +434,5 @@ if __name__== '__main__':
     cmdrun=True
     if cmdrun:
         matplotlib.use('Agg') # for use where you're running on a command line
-
-    main(allskydir,ionofdir,plotdir,wl = wl,tint=tint,reinterp=remakealldata,timelim)
+    
+    main(allskydir,ionofdir,plotdir,wl = wl,tint=tint,reinterp=remakealldata,timelim=timelim)
