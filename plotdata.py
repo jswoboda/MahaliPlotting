@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use('Agg') # for use where you're running on a command line
 import pdb
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import pytz
 from datetime import datetime
 from dateutil import parser
@@ -18,10 +19,14 @@ from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 
 
 def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=None):
-
-    
-
-
+    """ This is the main function for plot data. This function will determine what is to be plotted
+    and call all of the spatial and time regestration programs from GeoData.
+    Inputs
+        allskydir - The directory that holds the FITS files for the allsky data.
+            If a None is passed then a 
+        ionofdir - The directory that holds all of the ionofiles.
+        plotdir - The directory where the plots are stored.
+        wl - The wavelength of the allsky light."""
     latlim2 = [45.,75.]
     lonlim2 = [-185.,-125.]
     
@@ -64,11 +69,7 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
             TEClist.append(TECGD)
             TECtime[0] = min(min(TECGD.times[:,0]),TECtime[0])
             TECtime[1] = max(max(TECGD.times[:,0]),TECtime[1])
-    #        Geolatlim[0] = min(min(TECGD.dataloc[:,0]),Geolatlim[0])
-    #        Geolatlim[1] = max(max(TECGD.dataloc[:,0]),Geolatlim[1])
-    #
-    #        Geolonlim[0] = min(min(TECGD.dataloc[:,1]),Geolonlim[0])
-    #        Geolonlim[1] = max(max(TECGD.dataloc[:,1]),Geolonlim[1])
+
     if allskydir is not None:
         isallsky=True
    
@@ -78,7 +79,7 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
             pfalla = sp.array([65.136667,-147.447222,689.])
     
             flist558 = glob.glob(os.path.join(allskydir,wlstr))
-            allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_DASC_20110112_AZ_10deg.FITS','PKR_DASC_20110112_EL_10deg.FITS',150.,pfalla))
+            allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla))
             if timelim is not None:
                 allsky_data.timereduce(timelim)
                 # reduce the size of the allskydata
@@ -198,7 +199,7 @@ def plotopticsonly(allsky_data,plotdir,m,ax,fig):
     plotnum=0
     for iop in range(len(optictimes)):
         (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,[100,800],title='',
-                            time = iop,cmap='Greens',gkey = 'image',fig=fig,ax=ax,cbar=True,m=m)
+                            time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=True,m=m)
                             
         cbar3.ax.yaxis.set_ticks_position('left')
 
@@ -215,6 +216,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
     strlen = int(sp.ceil(sp.log10(maxplot))+1)
     fmstr = '{0:0>'+str(strlen)+'}_'
     plotnum=0
+    firstbar = True 
     for (optic_times,gps_cur)in zip(allskylist,gpslist):
         gpshands = []
         gpsmin = sp.inf
@@ -225,7 +227,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
             if len(igpslist)==0:
                 continue
 
-            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='jet',fig=fig,
+            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
                   ax=ax,title='',cbar=True,err=.1,m=m)
             gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
             gpsmax = sp.maximum(igps.times[igpslist,1].max(),gpsmax)
@@ -238,9 +240,12 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
 
         for iop in optic_times:
             (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,[100,800],title='',
-                                time = iop,cmap='Greys',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
-            cbaras = plt.colorbar(slice3,orientation='horizontal')
-            cbaras.set_label('All Sky Scale')
+                                time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
+            slice3.set_norm(colors.PowerNorm(gamma=0.6,vmin=100,vmax=800))
+            if firstbar:
+                firstbar=False
+                cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
+                cbaras.set_label('All Sky Scale')
             slice3.set_zorder(minz)
             plt.title(insertinfo('GPS $tmdy $thmsehms',posix=gpsmin,posixend=gpsmax)+'\n'+insertinfo('All Sky $tmdy $thmsehms',posix=allsky_data.times[iop,0],posixend=allsky_data.times[iop,1]))
             print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
