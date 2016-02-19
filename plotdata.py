@@ -56,7 +56,6 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
     #    Geolonlim = [sp.Inf,-sp.Inf];
         for ifile in TECfiles:
             TECGD = GeoData(readIonofiles,(ifile,))
-            
             if timelim is not None:
                 TECGD.timereduce(timelim)
                 
@@ -70,7 +69,6 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
     #
     #        Geolonlim[0] = min(min(TECGD.dataloc[:,1]),Geolonlim[0])
     #        Geolonlim[1] = max(max(TECGD.dataloc[:,1]),Geolonlim[1])
-
     if allskydir is not None:
         isallsky=True
    
@@ -108,7 +106,6 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
                 allsky_data.timereduce(timelim)
             allskytime=allsky_data.times[:,0]
 
-    
     
     #%% make lists for plotting
     tectime = sp.arange(TECtime[0],TECtime[1],60.*tint)
@@ -228,7 +225,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
             if len(igpslist)==0:
                 continue
 
-            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
+            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='jet',fig=fig,
                   ax=ax,title='',cbar=True,err=.1,m=m)
             gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
             gpsmax = sp.maximum(igps.times[igpslist,1].max(),gpsmax)
