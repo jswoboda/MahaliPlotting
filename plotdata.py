@@ -23,10 +23,15 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
     and call all of the spatial and time regestration programs from GeoData.
     Inputs
         allskydir - The directory that holds the FITS files for the allsky data.
-            If a None is passed then a 
-        ionofdir - The directory that holds all of the ionofiles.
+            If a None is passed then a the allsky is not plotted.
+        ionofdir - The directory that holds all of the ionofiles. If a None is 
+            passed then a the allsky is not plotted.
         plotdir - The directory where the plots are stored.
-        wl - The wavelength of the allsky light."""
+        wl - The wavelength of the allsky light in a string.
+        tint - The number of minutes the GPS data is plotted over. Default is 5.
+        reinterp - A bool that determines if the GeoData files for the optical data
+            should be remade.
+        timelim - A list that shows the time boundries in posix."""
     latlim2 = [45.,75.]
     lonlim2 = [-185.,-125.]
     
@@ -167,12 +172,13 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
     
     plt.close(fig)
     
-def plotgpsonly(TEClist,plotdir,m,ax,fig):
-    maxplot = len(allsky_data.times)
+def plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig):
+    """ Makes a set of plots when only gps data is avalible."""
+    maxplot = len(gpslist)
     strlen = int(sp.ceil(sp.log10(maxplot))+1)
     fmstr = '{0:0>'+str(strlen)+'}_'
     plotnum=0
-    for (optic_times,gps_cur)in zip(allskylist,gpslist):
+    for gps_cur in gpslist:
         gpshands = []
         gpsmin = sp.inf
         gpsmax = -sp.inf
@@ -189,21 +195,31 @@ def plotgpsonly(TEClist,plotdir,m,ax,fig):
             gpshands.append(sctter)
         scatercb.set_label('vTEC in TECu')
         #change he z order
-        minz = gpshands[0].get_zorder()
+        
+        print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
+        plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'GPSonly.png'))
+        plotnum+=1
         for i in reversed(gpshands):
             i.set_zorder(i.get_zorder()+1)
 def plotopticsonly(allsky_data,plotdir,m,ax,fig):
-    """ """
-    
+    """ Make a set of pots when only all sky is avalible."""
+    maxplot = len(allsky_data.times)
+    strlen = int(sp.ceil(sp.log10(maxplot))+1)
+    fmstr = '{0:0>'+str(strlen)+'}_'
     optictimes = allsky_data.times
     plotnum=0
+    firstbar = True
+    optbnds = [100,800]
     for iop in range(len(optictimes)):
-        (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,[100,800],title='',
+        (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,optbnds,title='',
                             time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=True,m=m)
                             
-        cbar3.ax.yaxis.set_ticks_position('left')
+        slice3.set_norm(colors.PowerNorm(gamma=0.6,vmin=optbnds[0],vmax=optbnds[1]))
+        if firstbar:
+            firstbar=False
+            cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
+            cbaras.set_label('All Sky Scale')
 
-        slice3.set_zorder(minz)
         plt.title(insertinfo('All Sky $tmdy $thmsehms',posix=allsky_data.times[iop,0],posixend=allsky_data.times[iop,1]))
         print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
         plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASonly.png'))
@@ -212,11 +228,16 @@ def plotopticsonly(allsky_data,plotdir,m,ax,fig):
         slice3.remove()
     
 def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
+    """ Make a set of plots when given both all sky ad GPS are given.
+        Inputs
+            allsky_data - The all sky data as a GeoData object.
+            TEClist - The """
     maxplot = len(allsky_data.times)
     strlen = int(sp.ceil(sp.log10(maxplot))+1)
     fmstr = '{0:0>'+str(strlen)+'}_'
     plotnum=0
-    firstbar = True 
+    firstbar = True
+    optbnds = [100,800]
     for (optic_times,gps_cur)in zip(allskylist,gpslist):
         gpshands = []
         gpsmin = sp.inf
@@ -239,9 +260,9 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
             i.set_zorder(i.get_zorder()+1)
 
         for iop in optic_times:
-            (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,[100,800],title='',
+            (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,optbnds,title='',
                                 time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
-            slice3.set_norm(colors.PowerNorm(gamma=0.6,vmin=100,vmax=800))
+            slice3.set_norm(colors.PowerNorm(gamma=0.6,vmin=optbnds[0],vmax=optbnds[1]))
             if firstbar:
                 firstbar=False
                 cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
@@ -257,7 +278,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
             i.remove()
 
 def getSRIhdf5(filename,times,pnheights,xycoords,newcordname,vbounds,pltdir =None):
-    """ """
+    """ Plots a set of ISR data in SRI's data format."""
     paramstr = ['Ne','Ti','Te']
     SRIh5 = GeoData(readSRI_h5,(filename,paramstr))
     (dt1,dt2) = parser.parse(times[0]),parser.parse(times[1])
@@ -324,7 +345,7 @@ def getSRIhdf5(filename,times,pnheights,xycoords,newcordname,vbounds,pltdir =Non
 if __name__== '__main__':
     argv = sys.argv[1:]
     outstr = ''' 
-             Usage: 'plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>,  -d <date>, -b <begining time>, -e <endtime>,-p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>'
+             Usage: plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>, -d <date>, -b <begining time>, -e <endtime>, -p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>
 
              or 
              
@@ -333,53 +354,21 @@ if __name__== '__main__':
              This script will run Mahali Plotting software. The user needs to 
              specify the locations of the different types of data and the time 
              limits if they don't want all of the data processed. 
-             
-                          
-             Manditory Arguments to run code, for help just use the -h option. 
-             
-             -f These will be the possible strings for the argument and the  
-                function they correspond to, that will be used ish shown.
-                 
-                 spectrums: makespectrums, This will create the ISR spectrums
-                 
-                 radardata :makeradardata, This will make the radar data and
-                     form the ACF estimates. If the raw radar data exists then 
-                     the user must use the -r option on the command line and set 
-                     it to y.
-                     
-                 fitting :fitdata, This will apply the fitter to the data in 
-                 the ACF folder of the base directory.
-                 
-                 fittingmat :fitdata,This will apply the fitter to the data in 
-                 the ACFMat folder of the base directory.
-                 
-                 fittinginv :fitdata,This will apply the fitter to the data in 
-                 the ACFInv folder of the base directory.
-                 
-                 applymat :applymat, This wil create and apply a matrix  
-                 formulation of thespace-time ambiguity function to ISR spectrums.
-                 
-                 
-                 all - This will run the commands from using the spectrums, radardata, 
-                     and fitting
-                     
-            -i The base directory that will contain all of the data. This directory 
-                must contain a directory called Origparams with h5 files to run 
-                the full simulation. The user can also start with a directory 
-                from a later stage of the simulation instead though.
-                
-            -c The configuration used for the simulation. Can be an ini file or
-                a pickle file.
                 
             Optional arguments
-            
+            -a The allsky data directory.
+            -w The wavelength of the allsky data.
+            -i The directory that holds all of the TEC data in ionofile formats.
+            -t The time interval that the TEC data will be plotted over.
+            -d The date of the data.
+            -b The beginning of the time window that the data will be plotted over.
+            -e The ending of the time window that the data will be plotted over.
             -r If a y follows this then the raw radar data will be remade. If
                 this is not used the radar data will only be made if it does
                 not exist in the file first.
             
              Example:
              python runsim.py -f radardata -f fitting -i ~/DATA/ExampleLongPulse -c ~/DATA/Example -r y'''
-    outstr = 'plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>, -d <date>, -b <begining time>, -e <endtime>, -p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>'
 
 
     try:
