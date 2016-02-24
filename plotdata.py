@@ -18,7 +18,7 @@ from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 
 
-def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=None):
+def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinterp=False,timelim=None):
     """ This is the main function for plot data. This function will determine what is to be plotted
     and call all of the spatial and time regestration programs from GeoData.
     Inputs
@@ -32,8 +32,8 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
         reinterp - A bool that determines if the GeoData files for the optical data
             should be remade.
         timelim - A list that shows the time boundries in posix."""
-    latlim2 = [45.,75.]
-    lonlim2 = [-185.,-125.]
+#    latlim2 = [45.,75.]
+#    lonlim2 = [-185.,-125.]
     
     
         #%% Make map
@@ -56,7 +56,6 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
     plt.hold(True)
     isallsky=False
     isgps = False
-    
     if ionofdir is not  None:
         isgps=True
         TEClist = []
@@ -91,8 +90,7 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
             allskytime = allsky_data.times[:,0]
             allsky_data=allsky_data.timeslice(sp.where(sp.logical_and(allskytime>=TECtime[0],allskytime<TECtime[1] ))[0])
             allskytime=allsky_data.times[:,0]
-            latlim2 = [45.,75.]
-            lonlim2 = [-185.,-125.]
+
             xcoords = allsky_data.__changecoords__('WGS84')
             latlim=[xcoords[:,0].min(),xcoords[:,0].max()]
             lonlim=[xcoords[:,1].min(),xcoords[:,1].max()]
@@ -144,7 +142,7 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
             gpslist.append(techlist)
             tlistkeep[itasn]=True
 
-        plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig)
+        plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig,latlim2,lonlim2)
     elif isgps:
         gpslist = []
         tlistkeep = sp.zeros(nptimes-1,dtype=bool)
@@ -166,13 +164,13 @@ def main(allskydir,ionofdir,plotdir,wl = str(558),tint=5,reinterp=False,timelim=
                 continue
             gpslist.append(techlist)
             tlistkeep[itasn]=True
-        plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig)
+        plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig,latlim2,lonlim2)
     elif isallsky:            
-        plotopticsonly(allsky_data,plotdir,m,ax,fig)
+        plotopticsonly(allsky_data,plotdir,m,ax,fig,latlim2,lonlim2)
     
     plt.close(fig)
     
-def plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig):
+def plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig,latlim,lonlim):
     """ Makes a set of plots when only gps data is avalible."""
     maxplot = len(gpslist)
     strlen = int(sp.ceil(sp.log10(maxplot))+1)
@@ -191,7 +189,8 @@ def plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig):
             (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
                   ax=ax,title='',cbar=True,err=.1,m=m)
             gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
-            gpsmax = sp.maximum(igps.times[igpslist,1].max(),gpsmax)
+            gpsmax = sp.maximum(igps.times[igpslist,0].max(),gpsmax)
+            
             gpshands.append(sctter)
         scatercb.set_label('vTEC in TECu')
         #change he z order
@@ -201,7 +200,7 @@ def plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig):
         plotnum+=1
         for i in reversed(gpshands):
             i.set_zorder(i.get_zorder()+1)
-def plotopticsonly(allsky_data,plotdir,m,ax,fig):
+def plotopticsonly(allsky_data,plotdir,m,ax,fig,latlim,lonlim):
     """ Make a set of pots when only all sky is avalible."""
     maxplot = len(allsky_data.times)
     strlen = int(sp.ceil(sp.log10(maxplot))+1)
@@ -219,7 +218,7 @@ def plotopticsonly(allsky_data,plotdir,m,ax,fig):
             firstbar=False
             cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
             cbaras.set_label('All Sky Scale')
-
+        
         plt.title(insertinfo('All Sky $tmdy $thmsehms',posix=allsky_data.times[iop,0],posixend=allsky_data.times[iop,1]))
         print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
         plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASonly.png'))
@@ -227,7 +226,7 @@ def plotopticsonly(allsky_data,plotdir,m,ax,fig):
         plotnum+=1
         slice3.remove()
     
-def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
+def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig,latlim,lonlim):
     """ Make a set of plots when given both all sky ad GPS are given.
         Inputs
             allsky_data - The all sky data as a GeoData object.
@@ -251,7 +250,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
             (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
                   ax=ax,title='',cbar=True,err=.1,m=m)
             gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
-            gpsmax = sp.maximum(igps.times[igpslist,1].max(),gpsmax)
+            gpsmax = sp.maximum(igps.times[igpslist,0].max(),gpsmax)
             gpshands.append(sctter)
         scatercb.set_label('vTEC in TECu')
         #change he z order
@@ -263,6 +262,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig):
             (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,optbnds,title='',
                                 time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
             slice3.set_norm(colors.PowerNorm(gamma=0.6,vmin=optbnds[0],vmax=optbnds[1]))
+           
             if firstbar:
                 firstbar=False
                 cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
@@ -363,6 +363,8 @@ if __name__== '__main__':
             -d The date of the data.
             -b The beginning of the time window that the data will be plotted over.
             -e The ending of the time window that the data will be plotted over.
+            -l Latitude bounds, must put both in.
+            -o Longitude bound, must be both.
             -r If a y follows this then the raw radar data will be remade. If
                 this is not used the radar data will only be made if it does
                 not exist in the file first.
@@ -372,7 +374,7 @@ if __name__== '__main__':
 
 
     try:
-        opts, args = getopt.gnu_getopt(argv,"ha:w:i:t:r:p:d:b:e:")
+        opts, args = getopt.gnu_getopt(argv,"ha:w:i:t:r:p:d:b:e:l:o:")
     except getopt.GetoptError:
         print(outstr)
         sys.exit(2)
@@ -380,10 +382,15 @@ if __name__== '__main__':
     remakealldata = False
     allskydir=None
     ionofdir=None
-    
+   
     wl='558'
     timelist=[None]*3
     
+    latlim2 = [45.,75.]
+    lonlim2 = [-175.,-125.]    
+    
+    latlist=[]
+    lonlist=[]
     for opt, arg in opts:
         if opt == '-h':
             print(outstr)
@@ -408,6 +415,20 @@ if __name__== '__main__':
         elif opt in ('-r', "--re"):
             if arg.lower() == 'y':
                 remakealldata = True
+        elif opt in ('-l', "--lat"):
+            latlist.append(float(arg))
+        elif opt in ('-o',"--lon"):
+            lonlist.append(float(arg))
+            
+    if len(latlist)>1:
+        minlat=min(latlist)
+        maxlat=max(latlist)
+        latlist=[sp.maximum(minlat,min(latlim2)),sp.minimum(maxlat,max(latlim2))]
+        
+    if len(lonlist)>1:
+        minlon=min(lonlist)
+        maxlon=max(lonlist)
+        lonlist=[sp.maximum(minlon,min(lonlim2)),sp.minimum(maxlon,max(lonlim2))]
     if None in timelist:
         timelim=None
     else:
@@ -426,4 +447,4 @@ if __name__== '__main__':
     if cmdrun:
         matplotlib.use('Agg') # for use where you're running on a command line
     
-    main(allskydir,ionofdir,plotdir,wl = wl,tint=tint,reinterp=remakealldata,timelim=timelim)
+    main(allskydir,ionofdir,plotdir,latlist,lonlist,wl = wl,tint=tint,reinterp=remakealldata,timelim=timelim)
