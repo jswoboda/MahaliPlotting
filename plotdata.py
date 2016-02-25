@@ -208,7 +208,7 @@ def plotopticsonly(allsky_data,plotdir,m,ax,fig,latlim,lonlim):
     optictimes = allsky_data.times
     plotnum=0
     firstbar = True
-    optbnds = [100,800]
+    optbnds = [300,1100]
     for iop in range(len(optictimes)):
         (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,optbnds,title='',
                             time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=True,m=m)
@@ -236,7 +236,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig,latli
     fmstr = '{0:0>'+str(strlen)+'}_'
     plotnum=0
     firstbar = True
-    optbnds = [100,800]
+    optbnds = [300,1100]
     for (optic_times,gps_cur)in zip(allskylist,gpslist):
         gpshands = []
         gpsmin = sp.inf
