@@ -49,8 +49,11 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
 #    m.drawstates()
 #    m.drawcountries()
     shp_info = m.readshapefile('st99_d00','states',drawbounds=True)
-    meridians=sp.arange(lonlim2[0],lonlim2[1],10.)
-    parallels = sp.arange(latlim2[0],latlim2[1],5.)
+    
+    merstep = sp.round_((lonlim2[1]-lonlim2[0])/5.)
+    parstep = sp.round_((latlim2[1]-latlim2[0])/5.)
+    meridians=sp.arange(lonlim2[0],lonlim2[1],merstep)
+    parallels = sp.arange(latlim2[0],latlim2[1],parstep)
     parhand=m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
     mrdhand = m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
     plt.hold(True)
@@ -186,7 +189,7 @@ def plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig,latlim,lonlim):
             if len(igpslist)==0:
                 continue
 
-            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
+            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,20],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
                   ax=ax,title='',cbar=True,err=.1,m=m)
             gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
             gpsmax = sp.maximum(igps.times[igpslist,0].max(),gpsmax)
@@ -230,7 +233,8 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig,latli
     """ Make a set of plots when given both all sky ad GPS are given.
         Inputs
             allsky_data - The all sky data as a GeoData object.
-            TEClist - The """
+            TEClist - The of GeoData objects derived from the ionofiles.
+            allskylist - A list of list which determines which allsky times are used."""
     maxplot = len(allsky_data.times)
     strlen = int(sp.ceil(sp.log10(maxplot))+1)
     fmstr = '{0:0>'+str(strlen)+'}_'
@@ -247,7 +251,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig,latli
             if len(igpslist)==0:
                 continue
 
-            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,15],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
+            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,20],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
                   ax=ax,title='',cbar=True,err=.1,m=m)
             gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
             gpsmax = sp.maximum(igps.times[igpslist,0].max(),gpsmax)
