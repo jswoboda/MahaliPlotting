@@ -239,6 +239,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig,latli
             TEClist - The of GeoData objects derived from the ionofiles.
             allskylist - A list of list which determines which allsky times are used."""
     maxplot = len(allsky_data.times)
+    maxplot = sp.array([len(i) for i in allskylist]).sum()
     strlen = int(sp.ceil(sp.log10(maxplot))+1)
     fmstr = '{0:0>'+str(strlen)+'}_'
     plotnum=0
