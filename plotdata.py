@@ -129,7 +129,10 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
             itfor = tectime[itasn+1]
             itas = sp.where(sp.logical_and(allskytime>=itback, allskytime<itfor))[0]
             if len(itas)==0:
-                continue
+                itas = sp.where(allskytime<=itback)[0]
+                if len(itas)==0:
+                    continue
+                itas = [itas[-1]]
     
             for k in range(len(TEClist)):
                 Geoone=TEClist[k];
