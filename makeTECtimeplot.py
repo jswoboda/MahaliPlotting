@@ -38,7 +38,7 @@ if __name__== '__main__':
 
     dxs = 4.0
     dys = 2.
-    fig, axmat = plt.subplots(int(numr),int(col),dpi=300,sharey=True,figsize=(dxs*col,dys*(numr+1)))
+    fig, axmat = plt.subplots(int(numr),int(col),dpi=300,sharex=True,sharey=True,figsize=(dxs*col,dys*(numr+1)))
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
     axvec= axmat.flatten()
     
