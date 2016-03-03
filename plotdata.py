@@ -292,7 +292,7 @@ def plottecvstime(TECGD,satnum,fig,ax):
     keep = TECGD.data['satnum']==satnum
     times = TECGD.times[:,0][keep]
     vtec = TECGD.data['vTEC'][keep]
-    dts = map(datetime.datetime.fromtimestamp, times)
+    dts = map(datetime.fromtimestamp, times)
     dtfmt = DateFormatter('%H:%M:%S')
     
     lines = ax.plot(dts,vtec)
@@ -301,7 +301,7 @@ def plottecvstime(TECGD,satnum,fig,ax):
     ax.xaxis.set_major_formatter(dtfmt)
     ax.set_xlabel('Time')
     ax.set_ylabel('vTEC')
-    ax.set_title('Data From Sat {%d}'.format(satnum))
+    ax.set_title('Data From Sat {0:d}'.format(satnum))
     return lines
     
 def getSRIhdf5(filename,times,pnheights,xycoords,newcordname,vbounds,pltdir =None):
