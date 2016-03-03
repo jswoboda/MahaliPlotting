@@ -292,7 +292,7 @@ def plottecvstime(TECGD,satnum,fig,ax):
     keep = TECGD.data['satnum']==satnum
     times = TECGD.times[:,0][keep]
     vtec = TECGD.data['vTEC'][keep]
-    dts = map(datetime.fromtimestamp, times)
+    dts = map(datetime.utcfromtimestamp, times)
     dtfmt = DateFormatter('%H:%M:%S')
     
     lines = ax.plot(dts,vtec)
