@@ -9,6 +9,7 @@ matplotlib.use('Agg') # for use where you're running on a command line
 import pdb
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+from matplotlib.dates import YearLocator, MonthLocator, DateFormatter,MinuteLocator, HourLocator
 import pytz
 from datetime import datetime
 from dateutil import parser
@@ -285,6 +286,24 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig,latli
         for i in reversed(gpshands):
             i.remove()
 
+
+def plottecvstime(TECGD,satnum,fig,ax):
+    
+    keep = TECGD.data['satnum']==satnum
+    times = TECGD.times[:,0][keep]
+    vtec = TECGD.data['vTEC'][keep]
+    dts = map(datetime.datetime.fromtimestamp, times)
+    dtfmt = DateFormatter('%H:%M:%S')
+    
+    lines = ax.plot(dts,vtec)
+    
+    ax.xaxis.set_major_locator(HourLocator())
+    ax.xaxis.set_major_formatter(dtfmt)
+    ax.set_xlabel('Time')
+    ax.set_ylabel('vTEC')
+    ax.set_title('Data From Sat {%d}'.format(satnum))
+    return lines
+    
 def getSRIhdf5(filename,times,pnheights,xycoords,newcordname,vbounds,pltdir =None):
     """ Plots a set of ISR data in SRI's data format."""
     paramstr = ['Ne','Ti','Te']
