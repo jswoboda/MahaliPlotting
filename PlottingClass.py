@@ -5,11 +5,7 @@ Created on Sun Feb 28 15:56:10 2016
 @author: John Swoboda
 """
 
-#!/usr/bin/env python
-"""
-
-"""
-import os, glob,getopt,sys
+import os, glob
 import scipy as sp
 import ConfigParser
 
@@ -26,8 +22,10 @@ from GeoData.plotting import scatterGD, slice2DGD,insertinfo
 from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 
-INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','date','asgamma','aslim','gpslim','isrparams','paramlim','isrheight','reinterp','paramheight']
+INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','date','asgamma','aslim','gpslim','isrparams','paramlim','isrheight','reinterp','paramheight','ISRLatnum','ISRLonnum','wl']
+
 class PlotClass(object):
+    """ This class will handle """
     def __init__(self,inifile,GPSloc=None,ASloc=None,ISRloc=None):
         self.inifile = inifile
         self.params = readini(inifile)
@@ -69,7 +67,8 @@ class PlotClass(object):
     def ASRead(self,ASloc):
         if ASloc is None:
             return  
-            
+        
+        wl = str(self.params['wl'])
         wlstr ='*_0'+wl+'_*.FITS'
         interpsavedfile = os.path.join(ASloc,'interp'+wl+'.h5')
         reinterp=self.params['reinterp']
@@ -145,7 +144,88 @@ class PlotClass(object):
         self.GDISR = SRIh5
     def RegisterData():
         """ """
+    def writeini(self,fname):
+        params=self.params
         
+        cfgfile = open(fname,'w')
+        config = ConfigParser.ConfigParser(allow_no_value = True)
+        
+        config.add_section('params')
+        config.add_section('paramsnames')
+        for ip in INIOPTIONS:
+            
+            if ip=='timebounds':
+                dts = map(datetime.utcfromtimestamp, params[ip])
+                data = datetime.strftime('%m/%d/%Y %H:%M:%S',dts[0]) + ' ' + datetime.strftime('%m/%d/%Y %H:%M:%S',dts[1])
+                config.set('params',ip,data)
+            elif ip=='paramheight':
+                temp= [item for sublist in params['paramheight'] for item in sublist]
+                data = ""
+                for a in temp[ip]:
+                    data += str(a)
+                    data += " "
+                config.set('params',ip,data)
+            elif ip=='reinterp':
+                if params[ip]:
+                    data='Yes'
+                else:
+                    data='No'
+                config.set('params',ip,data)
+            elif type(params[ip]) in(sp.ndarray,list):
+                data = ""
+                for a in params[ip]:
+                    data += str(a)
+                    data += " "
+                config.set('params',ip,data)
+            else:
+                config.set('params',ip,str(params[ip]))
+            config.set('paramsnames',ip,ip)
+        config.write(cfgfile)
+        cfgfile.close()
             
 def readini(inifile):
     
+    config = ConfigParser.ConfigParser()
+    config.read(inifile)
+    params={i:None for i in INIOPTIONS}
+    # Read in data from ini file
+    for ip in config.options('params'):
+        # get the original param name
+        rname  = config.get('paramsnames',ip)
+        # get the parameter and split it up
+        params[rname] = config.get('params',ip)
+        params[rname]=params[rname].split(" ")
+        # If its a single object try to 
+        if len(params[rname])==1:
+            params[rname]=params[rname][0]
+            try:
+                params[rname]=float(params[rname])
+            except:
+                pass
+        else:
+            for a in range(len(params[rname])):
+                try:
+                    params[rname][a]=float(params[rname][a])
+                except:
+                    pass
+    
+    # turn the time bounds to time stamps
+    if not params['timebounds']is None:
+        timelist = params['timebounds']
+        (dt1,dt2) = parser.parse(timelist[0]+ ' '+timelist[1]),parser.parse(timelist[2]+ ' '+timelist[3])
+        dt1 =dt1.replace(tzinfo=pytz.utc)
+        dt2 = dt2.replace(tzinfo=pytz.utc)
+        dt1ts = (dt1 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
+        dt2ts = (dt2 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
+        params['timebounds']=[dt1ts,dt2ts]
+    # change param height to a list of lists 
+    if not params['paramheight'] is None:
+        l1 = params['paramheight'][::2]
+        l2 = params['paramheight'][1::2]
+        params['paramheight']=[[i,j] for i,j in zip(l1,l2)]
+    # Default for reinterp is false
+    if params['reinterp']is None:
+        params['reinterp']=False
+    else:
+        params['reinterp'] = params['reinterp'].lower()=='yes'
+    return params
