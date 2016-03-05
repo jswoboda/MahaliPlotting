@@ -142,8 +142,124 @@ class PlotClass(object):
     
         SRIh5.interpolate(coords,newcoordname,method='linear')
         self.GDISR = SRIh5
-    def RegisterData():
+    def plotmap(self,fig,ax):
+        
+        latlim2 = self.params['latbounds']
+        lonlim2 = self.params['lonbounds']
+        m = Basemap(projection='merc',lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),\
+        lat_ts=sp.mean(latlim2),llcrnrlat=latlim2[0],urcrnrlat=latlim2[1],\
+        llcrnrlon=lonlim2[0],urcrnrlon=lonlim2[1],\
+        rsphere=6371200.,resolution='i',ax=ax)
+        # draw coastlines, state and country boundaries, edge of map.
+        #m.drawcoastlines()
+    #    m.drawstates()
+    #    m.drawcountries()
+        shp_info = m.readshapefile('st99_d00','states',drawbounds=True)
+        
+        merstep = sp.round_((lonlim2[1]-lonlim2[0])/5.)
+        parstep = sp.round_((latlim2[1]-latlim2[0])/5.)
+        meridians=sp.arange(lonlim2[0],lonlim2[1],merstep)
+        parallels = sp.arange(latlim2[0],latlim2[1],parstep)
+        parhand=m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
+        mrdhand = m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
+        plt.hold(True)
+        return m
+        
+    def plotalldata(self,plotdir,plotdir,m,ax,fig,):
         """ """
+        
+        
+    def plotsingle(self,m,ax,fig,tgps = 0,tas=0,tisr=0):
+    """ Make a set of plots when given both all sky ad GPS are given.
+        Inputs
+            allsky_data - The all sky data as a GeoData object.
+            TEClist - The of GeoData objects derived from the ionofiles.
+            allskylist - A list of list which determines which allsky times are used."""
+    maxplot = len(allsky_data.times)
+    maxplot = sp.array([len(i) for i in allskylist]).sum()
+    strlen = int(sp.ceil(sp.log10(maxplot))+1)
+    fmstr = '{0:0>'+str(strlen)+'}_'
+    plotnum=0
+    firstbar = True
+    optbnds = [300,1100]
+    for (optic_times,gps_cur)in zip(allskylist,gpslist):
+        gpshands = []
+        gpsmin = sp.inf
+        gpsmax = -sp.inf
+        for igpsn, (igps,igpslist) in enumerate(zip(TEClist,gps_cur)):
+            print('Plotting GPS data from rec {0} of {1}'.format(igpsn,len(gps_cur)))
+            # check if there's anything to plot
+            if len(igpslist)==0:
+                continue
+
+            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,20],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
+                  ax=ax,title='',cbar=True,err=.1,m=m)
+            gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
+            gpsmax = sp.maximum(igps.times[igpslist,0].max(),gpsmax)
+            gpshands.append(sctter)
+        scatercb.set_label('vTEC in TECu')
+        #change he z order
+        minz = gpshands[0].get_zorder()
+        for i in reversed(gpshands):
+            i.set_zorder(i.get_zorder()+1)
+
+        for iop in optic_times:
+            (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,optbnds,title='',
+                                time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
+            slice3.set_norm(colors.PowerNorm(gamma=0.6,vmin=optbnds[0],vmax=optbnds[1]))
+           
+            if firstbar:
+                firstbar=False
+                cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
+                cbaras.set_label('All Sky Scale')
+            slice3.set_zorder(minz)
+            plt.title(insertinfo('GPS $tmdy $thmsehms',posix=gpsmin,posixend=gpsmax)+'\n'+insertinfo('All Sky $tmdy $thmsehms',posix=allsky_data.times[iop,0],posixend=allsky_data.times[iop,1]))
+            print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
+            plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASwGPS.png'))
+
+            plotnum+=1
+            slice3.remove()
+        for i in reversed(gpshands):
+            i.remove()
+    def RegisterData(self):
+        """ """
+        tbounds = self.params['timebounds']
+        #%% make lists for plotting
+        tectime = sp.arange(tbounds[0],tbounds[1],60.*tint)
+        nptimes= len(tectime)
+        
+        if (not self.GDAS is None):
+            GPS2AS=[[]]*nptimes-1
+            allskytime=self.GDAS.times[:,0]
+            
+            if (not self.GDISR is None):
+                as2radar =GDAS.timeregister(self.GDISR)
+            for itasn in range(len(techtime)-1)            
+                itback=tectime[itasn]
+                itfor = tectime[itasn+1]
+                itas = sp.where(sp.logical_and(allskytime>=itback, allskytime<itfor))[0]
+                if len(itas)==0:
+                    itas = sp.where(allskytime<=itback)[0]
+                    if len(itas)==0:
+                        continue
+                    itas = [itas[-1]]
+                GPS2AS[itasn] = itas
+            elif (not self.GDISR is None):
+                GPS2AS=[[]]*nptimes-1
+                allskytime=self.GDISR.times
+                
+               
+                for itasn in range(len(techtime)-1)            
+                    itback=tectime[itasn]
+                    itfor = tectime[itasn+1]
+                    #need to fix this
+                    itas = sp.where(sp.logical_and(allskytime[:,1]>=itback, allskytime[:,0]<itfor))[0]
+                    if len(itas)==0:
+                        itas = sp.where(allskytime<=itback)[0]
+                        if len(itas)==0:
+                            continue
+                        itas = [itas[-1]]
+                    GPS2AS[itasn] = itas
     def writeini(self,fname):
         params=self.params
         
