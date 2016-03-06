@@ -50,6 +50,7 @@ class PlotClass(object):
         TEClist = []
         TECfiles = glob.glob(os.path.join(GPSloc,'*.iono'))
         TECtime = [sp.Inf,-sp.Inf];
+        print TECfiles
 
         for ifile in TECfiles:
             TECGD = GeoData(readIonofiles,(ifile,))
@@ -63,6 +64,7 @@ class PlotClass(object):
             TECtime[1] = max(max(TECGD.times[:,0]),TECtime[1])
             
             self.GDGPS = TECGD
+        
         
     def ASRead(self,ASloc):
         if ASloc is None:
@@ -142,8 +144,8 @@ class PlotClass(object):
     
         SRIh5.interpolate(coords,newcoordname,method='linear')
         self.GDISR = SRIh5
-    def RegisterData():
-        """ """
+    def RegisterData(self):
+        return
     def writeini(self,fname):
         params=self.params
         
@@ -184,7 +186,7 @@ class PlotClass(object):
         cfgfile.close()
             
 def readini(inifile):
-    
+
     config = ConfigParser.ConfigParser()
     config.read(inifile)
     params={i:None for i in INIOPTIONS}
