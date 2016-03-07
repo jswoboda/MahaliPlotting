@@ -21,7 +21,7 @@ from mpl_toolkits.basemap import Basemap
 from GeoData.plotting import scatterGD, slice2DGD,insertinfo
 from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
-
+from copy import copy
 INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','date','asgamma','aslim','gpslim','isrparams','paramlim','isrheight','reinterp','paramheight','ISRLatnum','ISRLonnum','wl']
 
 class PlotClass(object):
@@ -63,7 +63,7 @@ class PlotClass(object):
             TECtime[0] = min(min(TECGD.times[:,0]),TECtime[0])
             TECtime[1] = max(max(TECGD.times[:,0]),TECtime[1])
             
-            self.GDGPS = TECGD
+        self.GDGPS = TEClist
         
         
     def ASRead(self,ASloc):
@@ -229,14 +229,29 @@ class PlotClass(object):
         tbounds = self.params['timebounds']
         #%% make lists for plotting
         tectime = sp.arange(tbounds[0],tbounds[1],60.*tint)
-        nptimes= len(tectime)
         
+        nptimes= len(tectime)
+        timelists = [[tectime[i],tectime[i+1]] for i in range(nptimes-1)]
+        teclist = [None]*(len(techtime)-1) 
+        regdict = {'TEC':[None]*(nptimes-1),'AS':[None]*(nptimes-1),'ISR':[None]*(nptimes-1),'Time':timelists}
+        if not self.GDGPS is None:
+           for itasn in range(len(techtime)-1)            
+                itback=tectime[itasn]
+                itfor = tectime[itasn+1 
+                for k in range(len(self.GDGPS)):
+                    Geoone=self.GDGPS[k]
+                    timevec = Geoone.times[:,0]
+        
+                    itgps = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
+                    if len(itgps)>0:
+                        teclist[itasn]        
+            
         if (not self.GDAS is None):
             GPS2AS=[[]]*nptimes-1
+            GPS2ASlen = []
             allskytime=self.GDAS.times[:,0]
             
-            if (not self.GDISR is None):
-                as2radar =GDAS.timeregister(self.GDISR)
+            
             for itasn in range(len(techtime)-1)            
                 itback=tectime[itasn]
                 itfor = tectime[itasn+1]
@@ -247,6 +262,10 @@ class PlotClass(object):
                         continue
                     itas = [itas[-1]]
                 GPS2AS[itasn] = itas
+                
+            if (not self.GDISR is None):
+                as2radar =GDAS.timeregister(self.GDISR)
+                
         elif (not self.GDISR is None):
             GPS2AS=[[]]*nptimes-1
             allskytime=self.GDISR.times
