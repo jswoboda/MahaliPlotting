@@ -144,10 +144,7 @@ class PlotClass(object):
     
         SRIh5.interpolate(coords,newcoordname,method='linear')
         self.GDISR = SRIh5
-<<<<<<< HEAD
-    def RegisterData(self):
-        return
-=======
+
     def plotmap(self,fig,ax):
         
         latlim2 = self.params['latbounds']
@@ -228,7 +225,7 @@ class PlotClass(object):
         for i in reversed(gpshands):
             i.remove()
     def RegisterData(self):
-        """ """
+        """ This function will register data"""
         tbounds = self.params['timebounds']
         #%% make lists for plotting
         tectime = sp.arange(tbounds[0],tbounds[1],60.*tint)
@@ -250,23 +247,24 @@ class PlotClass(object):
                         continue
                     itas = [itas[-1]]
                 GPS2AS[itasn] = itas
-            elif (not self.GDISR is None):
-                GPS2AS=[[]]*nptimes-1
-                allskytime=self.GDISR.times
-                
-               
-                for itasn in range(len(techtime)-1)            
-                    itback=tectime[itasn]
-                    itfor = tectime[itasn+1]
-                    #need to fix this
-                    itas = sp.where(sp.logical_and(allskytime[:,1]>=itback, allskytime[:,0]<itfor))[0]
+        elif (not self.GDISR is None):
+            GPS2AS=[[]]*nptimes-1
+            allskytime=self.GDISR.times
+            
+           
+            for itasn in range(len(techtime)-1)            
+                itback=tectime[itasn]
+                itfor = tectime[itasn+1]
+                #need to fix this
+                itas = sp.where(sp.logical_and(allskytime[:,1]>=itback, allskytime[:,0]<itfor))[0]
+                if len(itas)==0:
+                    itas = sp.where(allskytime<=itback)[0]
                     if len(itas)==0:
-                        itas = sp.where(allskytime<=itback)[0]
-                        if len(itas)==0:
-                            continue
-                        itas = [itas[-1]]
-                    GPS2AS[itasn] = itas
->>>>>>> f9338770a2cf05d85c2d994d79643a1765a4d6ba
+                        continue
+                    itas = [itas[-1]]
+                GPS2AS[itasn] = itas
+
+#%% Write out file
     def writeini(self,fname):
         params=self.params
         
