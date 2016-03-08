@@ -232,23 +232,24 @@ class PlotClass(object):
         
         nptimes= len(tectime)
         timelists = [[tectime[i],tectime[i+1]] for i in range(nptimes-1)]
-        teclist = [None]*(len(techtime)-1) 
-        regdict = {'TEC':[None]*(nptimes-1),'AS':[None]*(nptimes-1),'ISR':[None]*(nptimes-1),'Time':timelists}
+        # teclist is a Ntime length list
+        teclist = [[]*(nptimes-1) 
+        regdict = {'TEC':teclist,'AS':[[]]*(nptimes-1),'ISR':[[]]*(nptimes-1),'Time':timelists}
         if not self.GDGPS is None:
            for itasn in range(len(techtime)-1)            
                 itback=tectime[itasn]
                 itfor = tectime[itasn+1 
+                templist = [[]]*len(self.GDGPS)
                 for k in range(len(self.GDGPS)):
                     Geoone=self.GDGPS[k]
                     timevec = Geoone.times[:,0]
         
-                    itgps = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
-                    if len(itgps)>0:
-                        teclist[itasn]        
+                    templist[k] = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
+                teclist[itasn]  =templist      
             
         if (not self.GDAS is None):
             GPS2AS=[[]]*nptimes-1
-            GPS2ASlen = []
+            GPS2ASlen = [0]*nptimes-1
             allskytime=self.GDAS.times[:,0]
             
             
@@ -262,27 +263,73 @@ class PlotClass(object):
                         continue
                     itas = [itas[-1]]
                 GPS2AS[itasn] = itas
+                GPS2ASlen[itasn]=len(itas)
                 
+            GPS2ASsingle = []
+            teclist2 =[]
+            timelist2 = []
+            #repeat for all sky values
+            for i1,ilen in enumerate(GPS2ASlen):
+                GPS2ASsingle=GPS2ASsingle+GPS2AS[i1]
+                teclist2 =teclist2+[ teclist[i1]]*ilen
+                timelist2 =timelist2+[ timelists[i1]]*ilen
+            regdict['TEC']=teclist2
+            regdict['AS']=GPS2ASsingle
+            regdict['Time']=timelist2
+            regdict['ISR'] = [[]]*len(GPS2ASsingle)
             if (not self.GDISR is None):
                 as2radar =GDAS.timeregister(self.GDISR)
                 
+                teclist3=[]
+                timelist3=[]
+                GPS2ASsingle2=[]
+                AS2ISRsingle=[]
+                
+                for j1,jasval in enumerate(GPS2ASsingle2):
+                    jlen=len(as2radar[jsval])
+                    AS2ISRsingle =AS2ISRsingle +as2radar[jasval]
+                    teclist3=teclist3+[teclist2[j1]]*jlen
+                    timelist3=timelist3+[timelist2[j1]]*jlen
+                    GPS2ASsingle2 = GPS2ASsingle2+[GPS2ASsingle2[j1]]*jlen
+                
+                regdict['TEC']=teclist3
+                regdict['AS']=GPS2ASsingle2
+                regdict['Time']=timelist3
+                regdict['ISR'] = AS2ISRsingle
+                
         elif (not self.GDISR is None):
-            GPS2AS=[[]]*nptimes-1
-            allskytime=self.GDISR.times
+            GPS2ISR=[[]]*nptimes-1
+            GPSISRlen = [0]*nptimes-1
+            isrtime=self.GDISR.times
             
            
             for itasn in range(len(techtime)-1)            
                 itback=tectime[itasn]
                 itfor = tectime[itasn+1]
                 #need to fix this
-                itas = sp.where(sp.logical_and(allskytime[:,1]>=itback, allskytime[:,0]<itfor))[0]
+                itas = sp.where(sp.logical_and(isrtime[:,1]>=itback, isrtime[:,0]<itfor))[0]
                 if len(itas)==0:
-                    itas = sp.where(allskytime<=itback)[0]
+                    itas = sp.where(isrtime<=itback)[0]
                     if len(itas)==0:
                         continue
                     itas = [itas[-1]]
-                GPS2AS[itasn] = itas
-
+                GPS2ISR[itasn] = itas
+                GPS2ISRlen[itasn]=len(itas)
+            
+            GPS2ISRsingle = []
+            teclist2 =[]
+            timelist2 = []
+            #repeat for all sky values
+            for i1,ilen in enumerate(GPS2ISRlen):
+                GPS2ISRsingle=GPS2ASsingle+GPS2ISR[i1]
+                teclist2 =teclist2+[ teclist[i1]]*ilen
+                timelist2 =timelist2+[ timelists[i1]]*ilen
+            regdict['TEC']=teclist2
+            regdict['ISR']=GPS2ISRsingle
+            regdict['Time']=timelist2
+            regdict['AS']=[[]]*len(timelist2)
+        
+        self.Regdict=regdict
 #%% Write out file
     def writeini(self,fname):
         params=self.params
