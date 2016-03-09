@@ -22,7 +22,7 @@ from GeoData.plotting import scatterGD, slice2DGD,insertinfo
 from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 from copy import copy
-INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','date','asgamma','aslim','gpslim','isrparams','paramlim','isrheight','reinterp','paramheight','ISRLatnum','ISRLonnum','wl']
+INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','date','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','ISRLatnum','ISRLonnum','wl']
 
 class PlotClass(object):
     """ This class will handle """
@@ -41,8 +41,9 @@ class PlotClass(object):
         self.RegisterData()
         
     
-        
+  #%% Read in data      
     def GPSRead(self,GPSloc):
+        """ """
         if GPSloc is None:
             return
         
@@ -67,6 +68,7 @@ class PlotClass(object):
         
         
     def ASRead(self,ASloc):
+        """ """
         if ASloc is None:
             return  
         
@@ -104,12 +106,13 @@ class PlotClass(object):
             
         self.GDAS = allsky_data
     def ISRRead(self,ISRloc):
-        
+        """ """
         if ISRloc is None:
             return
          
         pnheights= self.params['paramheight']
-        paramstr = self.params['isrparams']
+        
+        paramstr = list(set([i[0] in pnheights]))
         SRIh5 = GeoData(readSRI_h5,(ISRloc,paramstr))
         dt1ts,dt2ts = self.params['timebounds']
     
@@ -144,90 +147,12 @@ class PlotClass(object):
     
         SRIh5.interpolate(coords,newcoordname,method='linear')
         self.GDISR = SRIh5
-
-    def plotmap(self,fig,ax):
-        
-        latlim2 = self.params['latbounds']
-        lonlim2 = self.params['lonbounds']
-        m = Basemap(projection='merc',lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),\
-        lat_ts=sp.mean(latlim2),llcrnrlat=latlim2[0],urcrnrlat=latlim2[1],\
-        llcrnrlon=lonlim2[0],urcrnrlon=lonlim2[1],\
-        rsphere=6371200.,resolution='i',ax=ax)
-        # draw coastlines, state and country boundaries, edge of map.
-        #m.drawcoastlines()
-    #    m.drawstates()
-    #    m.drawcountries()
-        shp_info = m.readshapefile('st99_d00','states',drawbounds=True)
-        
-        merstep = sp.round_((lonlim2[1]-lonlim2[0])/5.)
-        parstep = sp.round_((latlim2[1]-latlim2[0])/5.)
-        meridians=sp.arange(lonlim2[0],lonlim2[1],merstep)
-        parallels = sp.arange(latlim2[0],latlim2[1],parstep)
-        parhand=m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
-        mrdhand = m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
-        plt.hold(True)
-        return m
-        
-    def plotalldata(self,plotdir,plotdir,m,ax,fig,):
-        """ """
-        
-        
-    def plotsingle(self,m,ax,fig,timenum=0):
-    """ Make a set of plots when given both all sky ad GPS are given.
-        Inputs
-            allsky_data - The all sky data as a GeoData object.
-            TEClist - The of GeoData objects derived from the ionofiles.
-            allskylist - A list of list which determines which allsky times are used."""
-    maxplot = len(allsky_data.times)
-    maxplot = sp.array([len(i) for i in allskylist]).sum()
-    strlen = int(sp.ceil(sp.log10(maxplot))+1)
-    fmstr = '{0:0>'+str(strlen)+'}_'
-    plotnum=0
-    firstbar = True
-    optbnds = self.params['aslim']
-    for (optic_times,gps_cur)in zip(allskylist,gpslist):
-        gpshands = []
-        gpsmin = sp.inf
-        gpsmax = -sp.inf
-        for igpsn, (igps,igpslist) in enumerate(zip(TEClist,gps_cur)):
-            print('Plotting GPS data from rec {0} of {1}'.format(igpsn,len(gps_cur)))
-            # check if there's anything to plot
-            if len(igpslist)==0:
-                continue
-
-            (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=[0,20],time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig,
-                  ax=ax,title='',cbar=True,err=.1,m=m)
-            gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
-            gpsmax = sp.maximum(igps.times[igpslist,0].max(),gpsmax)
-            gpshands.append(sctter)
-        scatercb.set_label('vTEC in TECu')
-        #change he z order
-        minz = gpshands[0].get_zorder()
-        for i in reversed(gpshands):
-            i.set_zorder(i.get_zorder()+1)
-
-        for iop in optic_times:
-            (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,optbnds,title='',
-                                time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
-            slice3.set_norm(colors.PowerNorm(gamma=0.6,vmin=optbnds[0],vmax=optbnds[1]))
-           
-            if firstbar:
-                firstbar=False
-                cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
-                cbaras.set_label('All Sky Scale')
-            slice3.set_zorder(minz)
-            plt.title(insertinfo('GPS $tmdy $thmsehms',posix=gpsmin,posixend=gpsmax)+'\n'+insertinfo('All Sky $tmdy $thmsehms',posix=allsky_data.times[iop,0],posixend=allsky_data.times[iop,1]))
-            print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
-            plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASwGPS.png'))
-
-            plotnum+=1
-            slice3.remove()
-        for i in reversed(gpshands):
-            i.remove()
+        #%% Registration
     def RegisterData(self):
         """ This function will register data"""
         tbounds = self.params['timebounds']
-        #%% make lists for plotting
+        tint=self.params['timewin']
+        # make lists for plotting
         tectime = sp.arange(tbounds[0],tbounds[1],60.*tint)
         
         nptimes= len(tectime)
@@ -236,9 +161,9 @@ class PlotClass(object):
         teclist = [[]]*(nptimes-1) 
         regdict = {'TEC':teclist,'AS':[None]*(nptimes-1),'ISR':[None]*(nptimes-1),'Time':timelists}
         if not self.GDGPS is None:
-           for itasn in range(len(techtime)-1)            
+           for itasn in range(len(tectime)-1):        
                 itback=tectime[itasn]
-                itfor = tectime[itasn+1 
+                itfor = tectime[itasn+1 ]
                 templist = [[]]*len(self.GDGPS)
                 for k in range(len(self.GDGPS)):
                     Geoone=self.GDGPS[k]
@@ -253,7 +178,7 @@ class PlotClass(object):
             allskytime=self.GDAS.times[:,0]
             
             
-            for itasn in range(len(techtime)-1)            
+            for itasn in range(len(tectime)-1):    
                 itback=tectime[itasn]
                 itfor = tectime[itasn+1]
                 itas = sp.where(sp.logical_and(allskytime>=itback, allskytime<itfor))[0]
@@ -278,7 +203,7 @@ class PlotClass(object):
             regdict['Time']=timelist2
             regdict['ISR'] = [None]*len(GPS2ASsingle)
             if (not self.GDISR is None):
-                as2radar =GDAS.timeregister(self.GDISR)
+                as2radar =self.GDAS.timeregister(self.GDISR)
                 
                 teclist3=[]
                 timelist3=[]
@@ -286,7 +211,7 @@ class PlotClass(object):
                 AS2ISRsingle=[]
                 
                 for j1,jasval in enumerate(GPS2ASsingle2):
-                    jlen=len(as2radar[jsval])
+                    jlen=len(as2radar[jasval])
                     AS2ISRsingle =AS2ISRsingle +as2radar[jasval]
                     teclist3=teclist3+[teclist2[j1]]*jlen
                     timelist3=timelist3+[timelist2[j1]]*jlen
@@ -299,11 +224,11 @@ class PlotClass(object):
                 
         elif (not self.GDISR is None):
             GPS2ISR=[[]]*nptimes-1
-            GPSISRlen = [0]*nptimes-1
+            GPS2ISRlen = [0]*nptimes-1
             isrtime=self.GDISR.times
             
            
-            for itasn in range(len(techtime)-1)            
+            for itasn in range(len(tectime)-1):          
                 itback=tectime[itasn]
                 itfor = tectime[itasn+1]
                 #need to fix this
@@ -330,6 +255,135 @@ class PlotClass(object):
             regdict['AS']=[None]*len(timelist2)
         
         self.Regdict=regdict
+#%% Plotting
+    def plotmap(self,fig,ax):
+        
+        latlim2 = self.params['latbounds']
+        lonlim2 = self.params['lonbounds']
+        m = Basemap(projection='merc',lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),\
+        lat_ts=sp.mean(latlim2),llcrnrlat=latlim2[0],urcrnrlat=latlim2[1],\
+        llcrnrlon=lonlim2[0],urcrnrlon=lonlim2[1],\
+        rsphere=6371200.,resolution='i',ax=ax)
+        # draw coastlines, state and country boundaries, edge of map.
+        #m.drawcoastlines()
+    #    m.drawstates()
+    #    m.drawcountries()
+        shp_info = m.readshapefile('st99_d00','states',drawbounds=True)
+        
+        merstep = sp.round_((lonlim2[1]-lonlim2[0])/5.)
+        parstep = sp.round_((latlim2[1]-latlim2[0])/5.)
+        meridians=sp.arange(lonlim2[0],lonlim2[1],merstep)
+        parallels = sp.arange(latlim2[0],latlim2[1],parstep)
+        parhand=m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
+        mrdhand = m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
+        plt.hold(True)
+        return m
+        
+    def plotalldata(self,plotdir,m,ax,fig,):
+        """ """
+        
+        timelist = self.regcell['Time']
+        Nt = len(timelist)
+        strlen = int(sp.ceil(sp.log10(Nt))+1)
+        fmstr = '{0:0>'+str(strlen)+'}_'
+        plotnum=0
+        firstbar = True
+        if self.params['paramheight'] is None:
+            Ncase = 1
+        else:
+            caselen = len(self.params['paramheight'])
+        Nplot = Ncase*Nt
+        for itime in range(Nt):
+            for icase in range(Ncase):
+                hands,firstbar = self.plotsingle(m,ax,fig,itime)
+                print('Ploting {0} of {1} plots'.format(plotnum,Nplot))
+                plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASwGPS.png'))
+                
+                for i in hands[0]:
+                    i.remove()
+                for i in hands[0:]:
+                    i.remove()
+                plotnum+=1
+            
+            
+    def plotsingle(self,m,ax,fig,timenum=0,icase=0,firstbar=False):
+        """ Make a set of plots when given both all sky ad GPS are given.
+            Inputs
+                allsky_data - The all sky data as a GeoData object.
+                TEClist - The of GeoData objects derived from the ionofiles.
+                allskylist - A list of list which determines which allsky times are used.
+        """
+
+        firstbar = True
+        optbnds = self.params['aslim']
+        gam=self.params['gamma']
+        
+        curwin=self.Regdict['Time']
+        
+        allhands = [[]]
+        
+        titlelist = []
+        if not self.GDGPS is None:
+            
+           gpshands = []
+           gpsbounds = self.params['gpslim']
+           for igps,igpslist in zip(self.GDGPS,self.Regdict['GPS'][timenum]):
+                (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig, ax=ax,title='',cbar=True,err=.1,m=m)
+                    
+                gpshands.append(sctter)
+                
+           scatercb.set_label('vTEC in TECu')
+           allhands[0]=gpshands
+           titlelist.append( insertinfo('GPS $tmdy $thmsehms',posix=curwin[0],posixend=curwin[1]))
+           #change he z order
+           
+           allhands[0]=gpshands
+        
+        if not self.GDAS is None:
+            
+            iop = self.Regdict['AS'][timenum]
+            (slice3,cbar3) = slice2DGD(self.GDAS,'alt',150,optbnds,title='',
+                                time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
+            slice3.set_norm(colors.PowerNorm(gamma=gam,vmin=optbnds[0],vmax=optbnds[1]))
+            titlelist.append(insertinfo('All Sky $tmdy $thmsehms',posix=self.GDAS.times[iop,0],posixend=self.GDAS.times[iop,1]))
+            if firstbar:
+                firstbar=False
+                cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
+                cbaras.set_label('All Sky Scale')
+            minz=slice3.get_zorder()
+            for i in reversed(allhands[0]):
+                minz=sp.minimum(minz,i.get_zorder)
+                i.set_zorder(i.get_zorder()+1)
+            slice3.set_zorder(minz)
+            allhands.append(slice3)
+        if not self.GDISR is None:
+            itn=self.Regdict['ISR'][timenum]
+            curph=self.params['paramheight'][icase]
+            vbounds = self.params['paramlim']
+            iparam=curph[0]
+            (plth,cbh) =  slice2DGD(self.GDISR,'z',curph[1],vbounds=vbounds[icase],time = itn,gkey = iparam,cmap='jet',fig=fig,
+                  ax=axvec[icase],title=iparam + ' at {0} km'.format(iheight),cbar=False)
+            if iparam.lower()!='ne':
+                ntics = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
+                cbh.set_ticks(ntics)
+                cbh.formatter.fmt = '%d'
+                cbh.update_ticks()
+            else:
+                ntics = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
+                cbh.set_ticks(ntics)
+                cbh.formatter.fmt = '%.1e'
+                cbh.update_ticks()
+            titlelist.append( insertinfo('ISR Data at $tmdy $thmsehms',posix=self.GDISR.times[itn,0],posixend = self.GDISR.times[itn,1]))
+            minz=plth.get_zorder()
+            for i in reversed(allhands[0]):
+                minz=sp.minimum(minz,i.get_zorder)
+                i.set_zorder(i.get_zorder()+1)
+            plth.set_zorder(minz)
+            allhands.append(plth)
+        plt.title('\n'.join(titlelist) )
+        return allhands,firstbar
+            
+    
 #%% Write out file
     def writeini(self,fname):
         params=self.params
@@ -341,14 +395,23 @@ class PlotClass(object):
         config.add_section('paramsnames')
         for ip in INIOPTIONS:
             
-            if ip=='timebounds':
+            if not ip in params.keys():
+                continue
+            elif ip=='timebounds':
                 dts = map(datetime.utcfromtimestamp, params[ip])
-                data = datetime.strftime('%m/%d/%Y %H:%M:%S',dts[0]) + ' ' + datetime.strftime('%m/%d/%Y %H:%M:%S',dts[1])
+                data = datetime.strftime(dts[0],'%m/%d/%Y %H:%M:%S') + ' ' + datetime.strftime(dts[1],'%m/%d/%Y %H:%M:%S')
                 config.set('params',ip,data)
             elif ip=='paramheight':
-                temp= [item for sublist in params['paramheight'] for item in sublist]
+                temp= [item for sublist in params[ip] for item in sublist]
                 data = ""
-                for a in temp[ip]:
+                for a in temp:
+                    data += str(a)
+                    data += " "
+                config.set('params',ip,data)
+            elif ip=='paramlim':
+                temp= [item for sublist in params[ip] for item in sublist]
+                data = ""
+                for a in temp:
                     data += str(a)
                     data += " "
                 config.set('params',ip,data)
@@ -358,7 +421,7 @@ class PlotClass(object):
                 else:
                     data='No'
                 config.set('params',ip,data)
-            elif type(params[ip]) in(sp.ndarray,list):
+            elif type(params[ip]) in (sp.ndarray,list):
                 data = ""
                 for a in params[ip]:
                     data += str(a)
@@ -410,6 +473,10 @@ def readini(inifile):
         l1 = params['paramheight'][::2]
         l2 = params['paramheight'][1::2]
         params['paramheight']=[[i,j] for i,j in zip(l1,l2)]
+    if not params['paramlim'] is None:
+        l1 = params['paramlim'][::2]
+        l2 = params['paramlim'][1::2]
+        params['paramlim']=[[i,j] for i,j in zip(l1,l2)]
     # Default for reinterp is false
     if params['reinterp']is None:
         params['reinterp']=False
