@@ -172,7 +172,7 @@ class PlotClass(object):
         """ """
         
         
-    def plotsingle(self,m,ax,fig,tgps = 0,tas=0,tisr=0):
+    def plotsingle(self,m,ax,fig,timenum=0):
     """ Make a set of plots when given both all sky ad GPS are given.
         Inputs
             allsky_data - The all sky data as a GeoData object.
@@ -184,7 +184,7 @@ class PlotClass(object):
     fmstr = '{0:0>'+str(strlen)+'}_'
     plotnum=0
     firstbar = True
-    optbnds = [300,1100]
+    optbnds = self.params['aslim']
     for (optic_times,gps_cur)in zip(allskylist,gpslist):
         gpshands = []
         gpsmin = sp.inf
@@ -233,8 +233,8 @@ class PlotClass(object):
         nptimes= len(tectime)
         timelists = [[tectime[i],tectime[i+1]] for i in range(nptimes-1)]
         # teclist is a Ntime length list
-        teclist = [[]*(nptimes-1) 
-        regdict = {'TEC':teclist,'AS':[[]]*(nptimes-1),'ISR':[[]]*(nptimes-1),'Time':timelists}
+        teclist = [[]]*(nptimes-1) 
+        regdict = {'TEC':teclist,'AS':[None]*(nptimes-1),'ISR':[None]*(nptimes-1),'Time':timelists}
         if not self.GDGPS is None:
            for itasn in range(len(techtime)-1)            
                 itback=tectime[itasn]
@@ -276,7 +276,7 @@ class PlotClass(object):
             regdict['TEC']=teclist2
             regdict['AS']=GPS2ASsingle
             regdict['Time']=timelist2
-            regdict['ISR'] = [[]]*len(GPS2ASsingle)
+            regdict['ISR'] = [None]*len(GPS2ASsingle)
             if (not self.GDISR is None):
                 as2radar =GDAS.timeregister(self.GDISR)
                 
@@ -327,7 +327,7 @@ class PlotClass(object):
             regdict['TEC']=teclist2
             regdict['ISR']=GPS2ISRsingle
             regdict['Time']=timelist2
-            regdict['AS']=[[]]*len(timelist2)
+            regdict['AS']=[None]*len(timelist2)
         
         self.Regdict=regdict
 #%% Write out file
