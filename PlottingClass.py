@@ -198,7 +198,7 @@ class PlotClass(object):
             timelist2 = []
             #repeat for all sky values
             for i1,ilen in enumerate(GPS2ASlen):
-                GPS2ASsingle=GPS2ASsingle+GPS2AS[i1]
+                GPS2ASsingle=GPS2ASsingle+GPS2AS[i1].tolist()
                 teclist2 =teclist2+[ teclist[i1]]*ilen
                 timelist2 =timelist2+[ timelists[i1]]*ilen
             regdict['TEC']=teclist2
@@ -215,7 +215,7 @@ class PlotClass(object):
                 
                 for j1,jasval in enumerate(GPS2ASsingle2):
                     jlen=len(as2radar[jasval])
-                    AS2ISRsingle =AS2ISRsingle +as2radar[jasval]
+                    AS2ISRsingle =AS2ISRsingle +as2radar[jasval].tolist()
                     teclist3=teclist3+[teclist2[j1]]*jlen
                     timelist3=timelist3+[timelist2[j1]]*jlen
                     GPS2ASsingle2 = GPS2ASsingle2+[GPS2ASsingle2[j1]]*jlen
@@ -249,7 +249,7 @@ class PlotClass(object):
             timelist2 = []
             #repeat for all sky values
             for i1,ilen in enumerate(GPS2ISRlen):
-                GPS2ISRsingle=GPS2ASsingle+GPS2ISR[i1]
+                GPS2ISRsingle=GPS2ASsingle+GPS2ISR[i1].tolist()
                 teclist2 =teclist2+[ teclist[i1]]*ilen
                 timelist2 =timelist2+[ timelists[i1]]*ilen
             regdict['TEC']=teclist2
