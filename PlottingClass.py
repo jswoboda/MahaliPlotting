@@ -176,8 +176,8 @@ class PlotClass(object):
                 teclist[itasn]  =templist      
             
         if (not self.GDAS is None):
-            GPS2AS=[[]]*nptimes-1
-            GPS2ASlen = [0]*nptimes-1
+            GPS2AS=[[]]*(nptimes-1)
+            GPS2ASlen = [0]*(nptimes-1)
             allskytime=self.GDAS.times[:,0]
             
             
@@ -226,8 +226,8 @@ class PlotClass(object):
                 regdict['ISR'] = AS2ISRsingle
                 
         elif (not self.GDISR is None):
-            GPS2ISR=[[]]*nptimes-1
-            GPS2ISRlen = [0]*nptimes-1
+            GPS2ISR=[[]]*(nptimes-1)
+            GPS2ISRlen = [0]*(nptimes-1)
             isrtime=self.GDISR.times
             
            
