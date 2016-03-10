@@ -72,15 +72,18 @@ class PlotClass(object):
         if ASloc is None:
             return  
         
-        wl = str(self.params['wl'])
+        wl = str(int(self.params['wl']))
         wlstr ='*_0'+wl+'_*.FITS'
         interpsavedfile = os.path.join(ASloc,'interp'+wl+'.h5')
         reinterp=self.params['reinterp']
         timelim=self.params['timebounds']
-        if reinterp or (not os.path.isfile(interpsavedfile)):
+        if reinterp or (not os.path.isfile(ASloc)):
             pfalla = sp.array([65.136667,-147.447222,689.])
     
-            flist558 = glob.glob(os.path.join(ASloc,wlstr))
+            filestr = os.path.join(ASloc,wlstr)
+            flist558 = glob.glob(filestr)
+            if len(flist558)==0:
+                return
             allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla))
             if timelim is not None:
                 allsky_data.timereduce(timelim)
@@ -100,7 +103,7 @@ class PlotClass(object):
             allsky_data.interpolate(newcoords,'WGS84',method='linear',twodinterp=True)
             allsky_data.write_h5(interpsavedfile)
         else:
-            allsky_data = GeoData.read_h5(interpsavedfile)
+            allsky_data = GeoData.read_h5(ASloc)
             if timelim is not None:
                 allsky_data.timereduce(timelim)
             
@@ -112,7 +115,7 @@ class PlotClass(object):
          
         pnheights= self.params['paramheight']
         
-        paramstr = list(set([i[0] in pnheights]))
+        paramstr = list(set([i[0] for i in pnheights]))
         SRIh5 = GeoData(readSRI_h5,(ISRloc,paramstr))
         dt1ts,dt2ts = self.params['timebounds']
     
