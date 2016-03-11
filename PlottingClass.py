@@ -25,8 +25,29 @@ from copy import copy
 INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','date','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','ISRLatnum','ISRLonnum','wl']
 
 class PlotClass(object):
-    """ This class will handle """
+    """ This class will handle all of the reading , registration and plotting of data
+    related to the mahali project. This is ment to be both the back end to a gui and 
+    the basic code used to run a whole set of data. The class will be given an 
+    ini file and location of data sets. The ini file will hold information regaurding
+    the plotting and data registration.
+    Variables:
+        inifile - The name of the ini file used for the the parameters.
+        params - A dixtionary that holds all of the parameters. The list INIOPTIONS
+            holds all of the keys for this dicitonary.
+        GDISR - A GeodData object for the ISR data. The default value is None.
+        GDGPS - A GeodData object for the GPS data. The default value is None.
+        GDAS - A GeodData object for the AllSky data. The default value is None.
+        Regdict - A dictionary used to order all of the data. The keys are 
+            TEC, AS, Time ISR. """
     def __init__(self,inifile,GPSloc=None,ASloc=None,ISRloc=None):
+        """ This will create an instance of a PlotClass object.
+            Inputs
+            inifile - The name of the ini file used for the the parameters.
+            GPSloc - The directory that holds all of the iono files. 
+            ASloc - This can be either a directory holding the FITS files or a 
+                h5 file thats been pre interpolated.
+            ISRloc - This can be either a file from SRI or an h5 file
+                thats been pre interpolated."""
         self.inifile = inifile
         self.params = readini(inifile)
         self.GDISR = None
@@ -43,7 +64,10 @@ class PlotClass(object):
     
   #%% Read in data      
     def GPSRead(self,GPSloc):
-        """ """
+        """ This function will read in the GPS data from ionofiles. It will assign 
+            the class variable GDGPS to the resultant GeoData object.
+            Input
+                GPSloc - The directory that holds all of the iono files. """
         if GPSloc is None:
             return
         
@@ -68,7 +92,12 @@ class PlotClass(object):
         
         
     def ASRead(self,ASloc):
-        """ """
+        """ This function will read in the All sky data from FITS files or structured
+            h5 files for GeoData.
+            Input
+                ASloc - This can be either a directory holding the FITS files or a 
+                h5 file thats been pre interpolated. It will assign the class variable GDAS to the
+            resultant GeoData object."""
         if ASloc is None:
             return  
         
@@ -109,14 +138,25 @@ class PlotClass(object):
             
         self.GDAS = allsky_data
     def ISRRead(self,ISRloc):
-        """ """
+        """ This function will read in the ISR data from SRI files or structured
+            h5 files for GeoData. It will assign the class variable GDISR to the
+            resultant GeoData object.
+            Input
+                ISRloc - This can be either a file from SRI or an h5 file
+                thats been pre interpolated. """
         if ISRloc is None:
             return
          
         pnheights= self.params['paramheight']
         
         paramstr = list(set([i[0] for i in pnheights]))
-        SRIh5 = GeoData(readSRI_h5,(ISRloc,paramstr))
+        try:
+            SRIh5 = GeoData(readSRI_h5,(ISRloc,paramstr))
+        except:
+            try:
+                SRIh5 = GeoData.read_h5(ISRloc)
+            except:
+                return                    
         dt1ts,dt2ts = self.params['timebounds']
     
         timelist = sp.where((SRIh5.times[:,0]>=dt1ts)&(SRIh5.times[:,0]<=dt2ts))[0]
@@ -131,28 +171,31 @@ class PlotClass(object):
     
         newcoordname = 'WGS84'
         
-        changed_coords = SRIh5.__changecoords__(newcoordname)
+        if not (SRIh5.coordnames.lower() == newcoordname.lower()):
+            changed_coords = SRIh5.__changecoords__(newcoordname)
+            
+            latmin,latmax = [changed_coords[:,0].min(),changed_coords[:,0].max()]
+            lonmin,lonmax = [changed_coords[:,1].min(),changed_coords[:,1].max()]
+            latvec = sp.linspace(latmin,latmax,self.params['ISRLatnum'])
+            lonvec = sp.linspace(lonmin,lonmax,self.params['ISRLonnum'])
+            
+            LON,LAT = sp.meshgrid(lonvec,latvec)
+            xycoords = [LAT.flatten(),LON.flatten()]
+                # interpolation
+            ncoords = xycoords.shape[0]
+            uhall = sp.repeat(uh,ncoords)
         
-        latmin,latmax = [changed_coords[:,0].min(),changed_coords[:,0].max()]
-        lonmin,lonmax = [changed_coords[:,1].min(),changed_coords[:,1].max()]
-        latvec = sp.linspace(latmin,latmax,self.params['ISRLatnum'])
-        lonvec = sp.linspace(lonmin,lonmax,self.params['ISRLonnum'])
+            coords = sp.tile(xycoords,(len(uh),1))
+            coords = sp.column_stack((coords,uhall))
         
-        LON,LAT = sp.meshgrid(lonvec,latvec)
-        xycoords = [LAT.flatten(),LON.flatten()]
-            # interpolation
-        ncoords = xycoords.shape[0]
-        uhall = sp.repeat(uh,ncoords)
-    
-        coords = sp.tile(xycoords,(len(uh),1))
-        coords = sp.column_stack((coords,uhall))
-    
-    
-        SRIh5.interpolate(coords,newcoordname,method='linear')
+        
+            SRIh5.interpolate(coords,newcoordname,method='linear')
         self.GDISR = SRIh5
         #%% Registration
     def RegisterData(self):
-        """ This function will register data"""
+        """ This function will register data and return a dictionary that will be used
+            keep track of the time associations between all of the different data sets.
+            """
         tbounds = self.params['timebounds']
         tint=self.params['timewin']
         # make lists for plotting
