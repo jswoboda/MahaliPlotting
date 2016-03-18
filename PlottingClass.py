@@ -113,7 +113,7 @@ class PlotClass(object):
             flist558 = glob.glob(filestr)
             if len(flist558)==0:
                 return
-            allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla))
+            allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla,timelim))
             if timelim is not None:
                 allsky_data.timereduce(timelim)
 
@@ -181,7 +181,7 @@ class PlotClass(object):
             lonvec = sp.linspace(lonmin,lonmax,self.params['ISRLonnum'])
             
             LON,LAT = sp.meshgrid(lonvec,latvec)
-            xycoords = [LAT.flatten(),LON.flatten()]
+            xycoords = sp.column_stack([LAT.flatten(),LON.flatten()])
                 # interpolation
             ncoords = xycoords.shape[0]
             uhall = sp.repeat(uh,ncoords)
@@ -257,7 +257,6 @@ class PlotClass(object):
                 timelist3=[]
                 GPS2ASsingle2=[]
                 AS2ISRsingle=[]
-                
                 for j1,jasval in enumerate(GPS2ASsingle2):
                     jlen=len(as2radar[jasval])
                     AS2ISRsingle =AS2ISRsingle +as2radar[jasval].tolist()
