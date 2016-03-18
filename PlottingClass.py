@@ -70,12 +70,11 @@ class PlotClass(object):
                 GPSloc - The directory that holds all of the iono files. """
         if GPSloc is None:
             return
-        
+        print('Reading in GPS Data')
         timelim=self.params['timebounds']
         TEClist = []
         TECfiles = glob.glob(os.path.join(GPSloc,'*.iono'))
         TECtime = [sp.Inf,-sp.Inf];
-        print TECfiles
 
         for ifile in TECfiles:
             TECGD = GeoData(readIonofiles,(ifile,))
@@ -89,7 +88,7 @@ class PlotClass(object):
             TECtime[1] = max(max(TECGD.times[:,0]),TECtime[1])
             
         self.GDGPS = TEClist
-        
+        print('Finished Reading in GPS Data')
         
     def ASRead(self,ASloc):
         """ This function will read in the All sky data from FITS files or structured
@@ -98,9 +97,10 @@ class PlotClass(object):
                 ASloc - This can be either a directory holding the FITS files or a 
                 h5 file thats been pre interpolated. It will assign the class variable GDAS to the
             resultant GeoData object."""
+        
         if ASloc is None:
             return  
-        
+        print('Reading in All sky data')
         wl = str(int(self.params['wl']))
         wlstr ='*_0'+wl+'_*.FITS'
         interpsavedfile = os.path.join(ASloc,'interp'+wl+'.h5')
@@ -137,6 +137,7 @@ class PlotClass(object):
                 allsky_data.timereduce(timelim)
             
         self.GDAS = allsky_data
+        print('Finished Reading in Allsky Data')
     def ISRRead(self,ISRloc):
         """ This function will read in the ISR data from SRI files or structured
             h5 files for GeoData. It will assign the class variable GDISR to the
@@ -146,7 +147,7 @@ class PlotClass(object):
                 thats been pre interpolated. """
         if ISRloc is None:
             return
-         
+        print('Reading in ISR Data') 
         pnheights= self.params['paramheight']
         
         paramstr = list(set([i[0] for i in pnheights]))
@@ -191,6 +192,7 @@ class PlotClass(object):
         
             SRIh5.interpolate(coords,newcoordname,method='linear')
         self.GDISR = SRIh5
+        print('Finished Reading in ISR Data')
         #%% Registration
     def RegisterData(self):
         """ This function will register data and return a dictionary that will be used
@@ -219,7 +221,7 @@ class PlotClass(object):
                 teclist[itasn]  =templist      
             
         if (not self.GDAS is None):
-            GPS2AS=[[]]*(nptimes-1)
+            GPS2AS=[sp.array([])]*(nptimes-1)
             GPS2ASlen = [0]*(nptimes-1)
             allskytime=self.GDAS.times[:,0]
             
@@ -232,7 +234,7 @@ class PlotClass(object):
                     itas = sp.where(allskytime<=itback)[0]
                     if len(itas)==0:
                         continue
-                    itas = [itas[-1]]
+                    itas = sp.array([itas[-1]])
                 GPS2AS[itasn] = itas
                 GPS2ASlen[itasn]=len(itas)
                 
@@ -269,7 +271,7 @@ class PlotClass(object):
                 regdict['ISR'] = AS2ISRsingle
                 
         elif (not self.GDISR is None):
-            GPS2ISR=[[]]*(nptimes-1)
+            GPS2ISR=[sp.array([])]*(nptimes-1)
             GPS2ISRlen = [0]*(nptimes-1)
             isrtime=self.GDISR.times
             
@@ -283,7 +285,7 @@ class PlotClass(object):
                     itas = sp.where(isrtime<=itback)[0]
                     if len(itas)==0:
                         continue
-                    itas = [itas[-1]]
+                    itas = sp.array([itas[-1]])
                 GPS2ISR[itasn] = itas
                 GPS2ISRlen[itasn]=len(itas)
             
@@ -362,9 +364,9 @@ class PlotClass(object):
 
         firstbar = True
         optbnds = self.params['aslim']
-        gam=self.params['gamma']
+        gam=self.params['asgamma']
         
-        curwin=self.Regdict['Time']
+        curwin=self.Regdict['Time'][timenum]
         
         allhands = [[]]
         
@@ -373,10 +375,13 @@ class PlotClass(object):
             
            gpshands = []
            gpsbounds = self.params['gpslim']
-           for igps,igpslist in zip(self.GDGPS,self.Regdict['GPS'][timenum]):
-                (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig, ax=ax,title='',cbar=True,err=.1,m=m)
+           for igps,igpslist in zip(self.GDGPS,self.Regdict['TEC'][timenum]):
+               # check if there's anything to plot
+               if len(igpslist)==0:
+                   continue
+               (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig, ax=ax,title='',cbar=True,err=.1,m=m)
                     
-                gpshands.append(sctter)
+               gpshands.append(sctter)
                 
            scatercb.set_label('vTEC in TECu')
            allhands[0]=gpshands
