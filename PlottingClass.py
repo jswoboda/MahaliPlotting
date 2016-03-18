@@ -257,7 +257,7 @@ class PlotClass(object):
                 timelist3=[]
                 GPS2ASsingle2=[]
                 AS2ISRsingle=[]
-                for j1,jasval in enumerate(GPS2ASsingle2):
+                for j1,jasval in enumerate(as2radar):
                     jlen=len(as2radar[jasval])
                     AS2ISRsingle =AS2ISRsingle +as2radar[jasval].tolist()
                     teclist3=teclist3+[teclist2[j1]]*jlen
