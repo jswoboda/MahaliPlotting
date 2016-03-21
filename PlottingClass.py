@@ -18,7 +18,7 @@ import pytz
 from datetime import datetime
 from dateutil import parser
 from mpl_toolkits.basemap import Basemap
-from GeoData.plotting import scatterGD, slice2DGD,insertinfo
+from GeoData.plotting import scatterGD, slice2DGD,insertinfo, contourGD
 from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 from copy import copy
@@ -53,12 +53,14 @@ class PlotClass(object):
         self.GDISR = None
         self.GDGPS = None
         self.GDAS = None
-        
+        self.numGD = 0
         #GeoData objects
         self.GPSRead(GPSloc)
         self.ASRead(ASloc)
         self.ISRRead(ISRloc)
         
+        
+    
         self.RegisterData()
         
     
@@ -70,6 +72,7 @@ class PlotClass(object):
                 GPSloc - The directory that holds all of the iono files. """
         if GPSloc is None:
             return
+        self.numGD+=1
         print('Reading in GPS Data')
         timelim=self.params['timebounds']
         TEClist = []
@@ -100,6 +103,7 @@ class PlotClass(object):
         
         if ASloc is None:
             return  
+        self.numGD+=1
         print('Reading in All sky data')
         wl = str(int(self.params['wl']))
         wlstr ='*_0'+wl+'_*.FITS'
@@ -147,6 +151,7 @@ class PlotClass(object):
                 thats been pre interpolated. """
         if ISRloc is None:
             return
+        self.numGD+=1
         print('Reading in ISR Data') 
         pnheights= self.params['paramheight']
         
@@ -160,7 +165,7 @@ class PlotClass(object):
                 return                    
         dt1ts,dt2ts = self.params['timebounds']
     
-        timelist = sp.where((SRIh5.times[:,0]>=dt1ts)&(SRIh5.times[:,0]<=dt2ts))[0]
+        timelist = sp.where((SRIh5.times[:,1]>=dt1ts)&(SRIh5.times[:,0]<=dt2ts))[0]
     
         if len(timelist)==0:
             return
@@ -169,12 +174,11 @@ class PlotClass(object):
     
         hset = sp.array([i[1] for i in pnheights])
         uh,uhs =sp.unique(hset,return_inverse=True)
-    
+        uh=uh*1e3
         newcoordname = 'WGS84'
         
         if not (SRIh5.coordnames.lower() == newcoordname.lower()):
             changed_coords = SRIh5.__changecoords__(newcoordname)
-            
             latmin,latmax = [changed_coords[:,0].min(),changed_coords[:,0].max()]
             lonmin,lonmax = [changed_coords[:,1].min(),changed_coords[:,1].max()]
             latvec = sp.linspace(latmin,latmax,self.params['ISRLatnum'])
@@ -258,11 +262,11 @@ class PlotClass(object):
                 GPS2ASsingle2=[]
                 AS2ISRsingle=[]
                 for j1,jasval in enumerate(as2radar):
-                    jlen=len(as2radar[jasval])
-                    AS2ISRsingle =AS2ISRsingle +as2radar[jasval].tolist()
-                    teclist3=teclist3+[teclist2[j1]]*jlen
-                    timelist3=timelist3+[timelist2[j1]]*jlen
-                    GPS2ASsingle2 = GPS2ASsingle2+[GPS2ASsingle2[j1]]*jlen
+                    jlen=len(jasval)
+                    AS2ISRsingle =AS2ISRsingle +jasval.tolist()
+                    teclist3=teclist3+[teclist2[jasval]]*jlen
+                    timelist3=timelist3+[timelist2[jasval]]*jlen
+                    GPS2ASsingle2 = GPS2ASsingle2+[GPS2ASsingle[jasval]]*jlen
                 
                 regdict['TEC']=teclist3
                 regdict['AS']=GPS2ASsingle2
@@ -334,15 +338,15 @@ class PlotClass(object):
         strlen = int(sp.ceil(sp.log10(Nt))+1)
         fmstr = '{0:0>'+str(strlen)+'}_'
         plotnum=0
-        firstbar = True
+        cbarax = []
         if self.params['paramheight'] is None:
             Ncase = 1
         else:
-            caselen = len(self.params['paramheight'])
+            Ncase = len(self.params['paramheight'])
         Nplot = Ncase*Nt
         for itime in range(Nt):
             for icase in range(Ncase):
-                hands,firstbar = self.plotsingle(m,ax,fig,itime)
+                hands,cbarax = self.plotsingle(m,ax,fig,itime,icase,cbarax)
                 print('Ploting {0} of {1} plots'.format(plotnum,Nplot))
                 plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASwGPS.png'))
                 
@@ -353,15 +357,16 @@ class PlotClass(object):
                 plotnum+=1
             
             
-    def plotsingle(self,m,ax,fig,timenum=0,icase=0,firstbar=False):
+    def plotsingle(self,m,ax,fig,timenum=0,icase=0,cbarax=[]):
         """ Make a set of plots when given both all sky ad GPS are given.
             Inputs
                 allsky_data - The all sky data as a GeoData object.
                 TEClist - The of GeoData objects derived from the ionofiles.
                 allskylist - A list of list which determines which allsky times are used.
         """
-
-        firstbar = True
+        
+        if len(cbarax)==0:
+            firstbar = True
         optbnds = self.params['aslim']
         gam=self.params['asgamma']
         
@@ -370,6 +375,11 @@ class PlotClass(object):
         allhands = [[]]
         
         titlelist = []
+        if firstbar:
+            wid = .3/self.numGD
+            cbarax=[fig.add_axes([.7+i*wid,.3,wid/2.,.4]) for i in range(self.numGD)]
+            fig.tight_layout(rect=[0,.05,.7,.95])
+        cbcur=0
         if not self.GDGPS is None:
             
            gpshands = []
@@ -378,10 +388,15 @@ class PlotClass(object):
                # check if there's anything to plot
                if len(igpslist)==0:
                    continue
-               (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig, ax=ax,title='',cbar=True,err=.1,m=m)
+               (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig, ax=ax,title='',cbar=False,err=.1,m=m)
                     
                gpshands.append(sctter)
-                
+           
+           
+               
+           scatercb = plt.colorbar(sctter,cax=cbarax[cbcur])
+           cbcur+=1
+           
            scatercb.set_label('vTEC in TECu')
            allhands[0]=gpshands
            titlelist.append( insertinfo('GPS $tmdy $thmsehms',posix=curwin[0],posixend=curwin[1]))
@@ -396,10 +411,10 @@ class PlotClass(object):
                                 time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
             slice3.set_norm(colors.PowerNorm(gamma=gam,vmin=optbnds[0],vmax=optbnds[1]))
             titlelist.append(insertinfo('All Sky $tmdy $thmsehms',posix=self.GDAS.times[iop,0],posixend=self.GDAS.times[iop,1]))
-            if firstbar:
-                firstbar=False
-                cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
-                cbaras.set_label('All Sky Scale')
+            
+            cbaras = plt.colorbar(slice3,cax=cbarax[cbcur])
+            cbcur+=1
+            cbaras.set_label('All Sky Scale')
             minz=slice3.get_zorder()
             for i in reversed(allhands[0]):
                 minz=sp.minimum(minz,i.get_zorder)
@@ -411,27 +426,30 @@ class PlotClass(object):
             curph=self.params['paramheight'][icase]
             vbounds = self.params['paramlim']
             iparam=curph[0]
-            (plth,cbh) =  slice2DGD(self.GDISR,'z',curph[1],vbounds=vbounds[icase],time = itn,gkey = iparam,cmap='jet',fig=fig,
-                  ax=axvec[icase],title=iparam + ' at {0} km'.format(iheight),cbar=False)
+            (plth,cbh) =  contourGD(self.GDISR,'alt',curph[1],vbounds=vbounds[icase],time = itn,gkey = iparam,cmap='jet',fig=fig,
+                  ax=ax,cbar=False,m=m)
+            cbh = plt.colorbar(plth,cax=cbarax[cbcur])
+            cbh.set_label(iparam)
             if iparam.lower()!='ne':
-                ntics = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
-                cbh.set_ticks(ntics)
+#                ntics = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
+#                cbh.set_ticks(ntics)
                 cbh.formatter.fmt = '%d'
                 cbh.update_ticks()
+                
             else:
-                ntics = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
-                cbh.set_ticks(ntics)
+#                ntics = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
+#                cbh.set_ticks(ntics)
                 cbh.formatter.fmt = '%.1e'
                 cbh.update_ticks()
             titlelist.append( insertinfo('ISR Data at $tmdy $thmsehms',posix=self.GDISR.times[itn,0],posixend = self.GDISR.times[itn,1]))
-            minz=plth.get_zorder()
-            for i in reversed(allhands[0]):
-                minz=sp.minimum(minz,i.get_zorder)
-                i.set_zorder(i.get_zorder()+1)
-            plth.set_zorder(minz)
+#            minz=plth.get_zorder()
+#            for i in reversed(allhands[0]):
+#                minz=sp.minimum(minz,i.get_zorder)
+#                i.set_zorder(i.get_zorder()+1)
+#            plth.set_zorder(minz)
             allhands.append(plth)
-        plt.title('\n'.join(titlelist) )
-        return allhands,firstbar
+        ax.set_title('\n'.join(titlelist) )
+        return allhands,cbarax
             
     
 #%% Write out file
