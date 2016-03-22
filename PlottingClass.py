@@ -426,28 +426,30 @@ class PlotClass(object):
             curph=self.params['paramheight'][icase]
             vbounds = self.params['paramlim']
             iparam=curph[0]
+            if iparam.lower()!='ne':
+                levels = sp.logspace(sp.log10(vbounds[icase][0]),sp.log10(vbounds[icase][1]),5)
+            else:
+                levels = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
             (plth,cbh) =  contourGD(self.GDISR,'alt',curph[1],vbounds=vbounds[icase],time = itn,gkey = iparam,cmap='jet',fig=fig,
-                  ax=ax,cbar=False,m=m)
+                  ax=ax,cbar=False,m=m,levels = levels)
             cbh = plt.colorbar(plth,cax=cbarax[cbcur])
             cbh.set_label(iparam)
             if iparam.lower()!='ne':
-#                ntics = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
-#                cbh.set_ticks(ntics)
-                cbh.formatter.fmt = '%d'
-                cbh.update_ticks()
+               
+                fmt= '%d'
+                
                 
             else:
-#                ntics = sp.linspace(vbounds[icase][0],vbounds[icase][1],5)
-#                cbh.set_ticks(ntics)
-                cbh.formatter.fmt = '%.1e'
-                cbh.update_ticks()
+
+                plth.set_norm(colors.LogNorm(vmin=vbounds[icase][0],vmax=vbounds[icase][1]))
+                fmt = '%.1e'
             titlelist.append( insertinfo('ISR Data at $tmdy $thmsehms',posix=self.GDISR.times[itn,0],posixend = self.GDISR.times[itn,1]))
 #            minz=plth.get_zorder()
 #            for i in reversed(allhands[0]):
 #                minz=sp.minimum(minz,i.get_zorder)
 #                i.set_zorder(i.get_zorder()+1)
 #            plth.set_zorder(minz)
-            cbh = plt.colorbar(plth,cax=cbarax[cbcur])
+            cbh = plt.colorbar(plth,cax=cbarax[cbcur],format=fmt)
             cbh.set_label(iparam)
             allhands.append(plth)
         ax.set_title('\n'.join(titlelist) )
