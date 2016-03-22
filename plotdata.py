@@ -396,8 +396,7 @@ if __name__== '__main__':
                 this is not used the radar data will only be made if it does
                 not exist in the file first.
             
-             Example:
-             python runsim.py -f radardata -f fitting -i ~/DATA/ExampleLongPulse -c ~/DATA/Example -r y'''
+            '''
 
 
     try:

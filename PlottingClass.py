@@ -5,7 +5,7 @@ Created on Sun Feb 28 15:56:10 2016
 @author: John Swoboda
 """
 
-import os, glob
+import os, glob, sys, getopt
 import scipy as sp
 import ConfigParser
 
@@ -447,6 +447,8 @@ class PlotClass(object):
 #                minz=sp.minimum(minz,i.get_zorder)
 #                i.set_zorder(i.get_zorder()+1)
 #            plth.set_zorder(minz)
+            cbh = plt.colorbar(plth,cax=cbarax[cbcur])
+            cbh.set_label(iparam)
             allhands.append(plth)
         ax.set_title('\n'.join(titlelist) )
         return allhands,cbarax
@@ -551,3 +553,57 @@ def readini(inifile):
     else:
         params['reinterp'] = params['reinterp'].lower()=='yes'
     return params
+
+
+if __name__== '__main__':
+    argv = sys.argv[1:]
+    outstr = ''' 
+             Usage: plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>, -d <date>, -b <begining time>, -e <endtime>, -p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>
+
+             or 
+             
+             python plotdata.py -h
+             
+             This script will run Mahali Plotting software. The user needs to 
+             specify the locations of the different types of data and the time 
+             limits if they don't want all of the data processed. 
+                
+            Optional arguments
+            -c Config file name.
+            -i The directory that holds all of the TEC data in ionofile formats.
+            -a The allsky data directory or GeoData file.
+            -r The ISR data file.
+            
+             Example:
+             python PlottingClass.py'''
+
+
+    try:
+        opts, args = getopt.gnu_getopt(argv,"ha:i:r:c:")
+    except getopt.GetoptError:
+        print(outstr)
+        sys.exit(2)
+
+    gpsloc=None
+    ASloc=None
+    ISRloc=None
+    plotdir=os.getcwd()
+    for opt, arg in opts:
+        if opt == '-h':
+            print(outstr)
+            sys.exit()
+        elif opt in ("-i", "--ifile"):
+            gpsloc = os.path.expanduser(arg)   
+        elif opt in ("-a", "--asky"):
+            ASloc=os.path.expanduser(arg)
+        elif opt in ("-r", "--radar"):
+            ISRloc=os.path.expanduser(arg)
+        elif opt in ("-c", "--config"):
+            inifile = os.path.expanduser(arg) 
+        elif opt in ('-p','--pdir'):
+            plotdir=os.path.expanduser(arg)
+        (fig,axmat) = plt.subplots(1,1,figsize=(16,12),facecolor='w')
+        PC = PlotClass(inifile,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
+        m=PC.plotmap(fig,axmat)
+        PC.plotalldata(plotdir,m,axmat,fig)
+        plt.close(fig)
