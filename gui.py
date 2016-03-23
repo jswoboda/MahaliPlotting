@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import matplotlib
 import numpy as np
 import pdb
@@ -9,7 +9,7 @@ import Tkinter as Tk
 import tkFileDialog as fd
 import ConfigParser
 from copy import copy
-#from PlottingClass import PlotClass
+from PlottingClass import PlotClass
 INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','isrlatnum','isrlonnum','wl']
 
 
@@ -20,6 +20,11 @@ class App():
         self.root=root
         self.root.title("Mahali")
         
+        self.fn = None
+        self.m = None
+        self.PC = None
+        self.allhands=[]
+        self.cbarsax = []        
         bd = {'entries':[],'labels':[]}
         self.input = {'ISR':copy(bd),'GPS':copy(bd),'AllSky':copy(bd)}
         self.options = {}
@@ -63,9 +68,15 @@ class App():
             self.input[field]['entries'][0].grid(row=irow+1,column=1,columnspan=2)
             self.input[field]['labels']=[Tk.Label(self.optionsframe,text=field)]
             self.input[field]['labels'][0].grid(row=irow+1,column=0)
-            
-            
-        self.i=len(self.input.keys())+1
+        self.times={}
+        self.times['var'] = Tk.StringVar(root,'None')
+        self.times['options'] = ['None']
+        self.times['menu'] = Tk.OptionMenu(self.optionsframe,self.times['var'],tuple(self.times['options']),command=self.updateplot)
+        self.times['menu'].grid(row=len(self.input.keys())+1,column=1)
+        self.times['label'] = Tk.Label(self.optionsframe,text='Choose Plot')
+        self.times['label'].grid(row=len(self.input.keys())+1,column=0)
+        
+        self.i=len(self.input.keys())+2
         for field in self.options:
             self.options[field]['entries']=[]
             self.options[field]['labels']=[]
@@ -113,6 +124,12 @@ class App():
         self.options['paramlim']['entries'][2*self.numparams+1].grid(row=self.i,column=3)
         self.numparams+=1
 
+    def updateplot(self,*args):
+        curvar = self.times['var'].get()
+        if curvar=='None':
+            return
+            
+        
     def update(self):
         for field in self.options:
             self.options[field]['values']=[]
@@ -134,7 +151,16 @@ class App():
             box.destroy()
         self.options['paramheight']['entries']=[]
         self.options['paramlim']['entries']=[]
-
+    
+    def plotdata(self):
+        """ """
+    def readindata(self):
+        if self.fn is None:
+            return
+        
+        self.PC = PlotClass(self.fn,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
+        self.m=self.PC.plotmap(self.fig,self.sp)
+        (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=0,icase=0,cbarax=self.cbarsax)
     def savefile(self):
         self.update()
         fn = fd.asksaveasfilename(title="Save File",filetypes=[('INI','.ini')])
@@ -159,7 +185,7 @@ class App():
         fn = fd.askopenfilename(title="Load File",filetypes=[('INI','.ini')])
         config = ConfigParser.ConfigParser()
         config.read(fn)
-
+        self.fn = fn
         data = config.get('params','paramlim').split(" ")
         nparams=len(data)/2
         for n in range(nparams):
