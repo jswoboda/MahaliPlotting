@@ -9,8 +9,8 @@ import os, glob, sys, getopt
 import scipy as sp
 import ConfigParser
 
-import matplotlib
-matplotlib.use('Agg') # for use where you're running on a command line
+#import matplotlib
+#matplotlib.use('Agg') # for use where you're running on a command line
 import pdb
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -22,7 +22,7 @@ from GeoData.plotting import scatterGD, slice2DGD,insertinfo, contourGD
 from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 from copy import copy
-INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','date','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','ISRLatnum','ISRLonnum','wl']
+INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','ISRLatnum','ISRLonnum','wl']
 
 class PlotClass(object):
     """ This class will handle all of the reading , registration and plotting of data

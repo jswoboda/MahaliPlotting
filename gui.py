@@ -1,21 +1,27 @@
+#!/usr/bin/python
 import matplotlib
 import numpy as np
+import pdb
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 import Tkinter as Tk
 import tkFileDialog as fd
 import ConfigParser
-
-INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','date','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','isrlatnum','isrlonnum','wl']
+from copy import copy
+#from PlottingClass import PlotClass
+INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','isrlatnum','isrlonnum','wl']
 
 
 class App():
 
     def __init__(self,root):
+        
         self.root=root
         self.root.title("Mahali")
-
+        
+        bd = {'entries':[],'labels':[]}
+        self.input = {'ISR':copy(bd),'GPS':copy(bd),'AllSky':copy(bd)}
         self.options = {}
         for op in INIOPTIONS:
             self.options[op]={}
@@ -46,10 +52,20 @@ class App():
         self.canvas.get_tk_widget().grid(row=1,column=0)
         self.canvas._tkcanvas.grid(row=2,column=0)
 
-        self.optionsframe=Tk.LabelFrame(self.root,text="options",padx=10,pady=10)
+        self.toolbar = NavigationToolbar2TkAgg(self.canvas, self.plotframe)
+        self.toolbar.update()
+        self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=True)
+            
+        self.optionsframe=Tk.LabelFrame(self.root,text="Options",padx=10,pady=10)
         self.optionsframe.grid(row=1,column=1,sticky='n')
-
-        self.i=1
+        for irow, field in enumerate(self.input.keys()):
+            self.input[field]['entries']=[Tk.Entry(self.optionsframe,width=45)]
+            self.input[field]['entries'][0].grid(row=irow+1,column=1,columnspan=2)
+            self.input[field]['labels']=[Tk.Label(self.optionsframe,text=field)]
+            self.input[field]['labels'][0].grid(row=irow+1,column=0)
+            
+            
+        self.i=len(self.input.keys())+1
         for field in self.options:
             self.options[field]['entries']=[]
             self.options[field]['labels']=[]
@@ -86,7 +102,7 @@ class App():
         self.AddParam()
 
     def AddParam(self):
-        self.i=17+self.numparams
+        self.i+=1
         self.options['paramheight']['entries'].append(Tk.Entry(self.optionsframe))
         self.options['paramheight']['entries'][2*self.numparams].grid(row=self.i,column=0)
         self.options['paramheight']['entries'].append(Tk.Entry(self.optionsframe))
@@ -150,6 +166,8 @@ class App():
             self.AddParam()
         
         for field in config.options('params'):
+            if not field in INIOPTIONS:
+                continue
             data = config.get('params',field).split(" ")
 
             if field=='paramheight':
