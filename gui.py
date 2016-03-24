@@ -184,7 +184,9 @@ class App():
                 strlisttmp = [istr+stradd for istr in strlist]
                 strlist2+strlisttmp
             strlist=strlist2
-        
+        self.times['menu']['menu'].delete(0, 'end')
+        for choice in strlist:
+            self.times['menu']['menu'].add_command(label=choice, command=Tk._setit(var, choice))
     def savefile(self):
         self.update()
         fn = fd.asksaveasfilename(title="Save File",filetypes=[('INI','.ini')])
