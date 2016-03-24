@@ -10,6 +10,7 @@ import tkFileDialog as fd
 import ConfigParser
 from copy import copy
 from PlottingClass import PlotClass
+from GeoData.plotting import insertinfo
 INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','isrlatnum','isrlonnum','wl']
 
 
@@ -71,6 +72,7 @@ class App():
         self.times={}
         self.times['var'] = Tk.StringVar(root,'None')
         self.times['options'] = ['None']
+        self.times['list'] = [[0,0]]
         self.times['menu'] = Tk.OptionMenu(self.optionsframe,self.times['var'],tuple(self.times['options']),command=self.updateplot)
         self.times['menu'].grid(row=len(self.input.keys())+1,column=1)
         self.times['label'] = Tk.Label(self.optionsframe,text='Choose Plot')
@@ -157,10 +159,32 @@ class App():
     def readindata(self):
         if self.fn is None:
             return
+        gpsloc = self.input['GPS']['entries'].get()
+        ASloc = self.input['AllSky']['entries'].get()
+        ISRloc=self.input['ISR']['entries'].get()
         
         self.PC = PlotClass(self.fn,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
         self.m=self.PC.plotmap(self.fig,self.sp)
         (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=0,icase=0,cbarax=self.cbarsax)
+        
+        strlist = [insertinfo('$tmdy $thmsehms',posix=i[0],posixend=i[1]) for i in self.PC.Regdict['Time']]
+        timearr = np.arange(len(strlist))
+        paramar = np.zeros(len(strlist))
+        self.times['list'] = np.column_stack((timearr,paramar))
+
+        # deal with case with no isr data        
+        if not self.PC.GDISR is None and   len(self.PC.params['paramheight'])>0:
+            nparams = len(self.PC.params['paramheight'])
+            timearr=np.tile(timearr,nparams)
+            paramar = np.repeat(np.arange(nparams),len(strlist))
+            self.times['list'] = np.column_stack((timearr,paramar))
+            strlist2 = []
+            for icase in self.PC.params['paramheight']:
+                stradd = ' '+icase[0] +' at ' + icase[1] +' km'
+                strlisttmp = [istr+stradd for istr in strlist]
+                strlist2+strlisttmp
+            strlist=strlist2
+        
     def savefile(self):
         self.update()
         fn = fd.asksaveasfilename(title="Save File",filetypes=[('INI','.ini')])

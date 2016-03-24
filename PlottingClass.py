@@ -72,6 +72,10 @@ class PlotClass(object):
                 GPSloc - The directory that holds all of the iono files. """
         if GPSloc is None:
             return
+        
+        if not os.path.isdir(os.path.expanduser(GPSloc)):
+            print('GPS path is not a directory')
+            return
         self.numGD+=1
         print('Reading in GPS Data')
         timelim=self.params['timebounds']
@@ -103,6 +107,9 @@ class PlotClass(object):
         
         if ASloc is None:
             return  
+        if not os.path.isdir(os.path.expanduser(ASloc)) and not os.path.isfile(os.path.expanduser(ASloc)):
+            print('All Sky Data cannot be read')
+            return
         self.numGD+=1
         print('Reading in All sky data')
         wl = str(int(self.params['wl']))
@@ -150,6 +157,9 @@ class PlotClass(object):
                 ISRloc - This can be either a file from SRI or an h5 file
                 thats been pre interpolated. """
         if ISRloc is None:
+            return
+        if not os.path.isfile(os.path.expanduser(ISRloc)):
+            print('ISR Data is not a file')
             return
         self.numGD+=1
         print('Reading in ISR Data') 
