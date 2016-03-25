@@ -9,9 +9,9 @@ import Tkinter as Tk
 import tkFileDialog as fd
 import ConfigParser
 from copy import copy
-from PlottingClass import PlotClass
+from PlottingClass import PlotClass, INIOPTIONS
 from GeoData.plotting import insertinfo
-INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','isrlatnum','isrlonnum','wl']
+#INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','isrlatnum','isrlonnum','wl']
 
 
 class App():
@@ -69,22 +69,37 @@ class App():
             self.input[field]['entries'][0].grid(row=irow+1,column=1,columnspan=2)
             self.input[field]['labels']=[Tk.Label(self.optionsframe,text=field)]
             self.input[field]['labels'][0].grid(row=irow+1,column=0)
+        # Time menu bar
         self.times={}
         self.times['var'] = Tk.StringVar(root,'None')
         self.times['options'] = ['None']
-        self.times['list'] = [[0,0]]
+        self.times['list'] = [0]
         self.times['menu'] = Tk.OptionMenu(self.optionsframe,self.times['var'],tuple(self.times['options']),command=self.updateplot)
         self.times['menu'].grid(row=len(self.input.keys())+1,column=1)
-        self.times['label'] = Tk.Label(self.optionsframe,text='Choose Plot')
+        self.times['label'] = Tk.Label(self.optionsframe,text='Choose Time/Parmameter')
         self.times['label'].grid(row=len(self.input.keys())+1,column=0)
+        # Radar Parameter menu
+        self.radarparam={}
+        self.radarparam['var'] = Tk.StringVar(root,'None')
+        self.radarparam['options'] = ['None']
+        self.radarparam['list'] = [0]
+        self.radarparam['menu'] = Tk.OptionMenu(self.optionsframe,self.radarparam['var'],tuple(self.radarparam['options']),command=self.updateplot)
+        self.radarparam['menu'].grid(row=len(self.input.keys())+1,column=2)
         
-        self.i=len(self.input.keys())+2
+        # buttons
+        self.buttons={}
+        self.buttons['ReadIn'] = Tk.Button(self.frame1, text="Read In Data", command=self.readindata)
+        self.buttons['ReadIn'].grid(row=len(self.input.keys())+2,column=1,sticky='w')
+        self.buttons['ReadIn'] = Tk.Button(self.frame1, text="Update Plot", command=self.updateplot)
+        self.buttons['ReadIn'].grid(row=len(self.input.keys())+2,column=2,sticky='w')
+        # Inputs
+        self.i=len(self.input.keys())+3
         for field in self.options:
             self.options[field]['entries']=[]
             self.options[field]['labels']=[]
             if field=='reinterp':
-                self.options[field]['var'] = a = Tk.IntVar()
-                self.options[field]['entries'].append(Tk.Checkbutton(self.optionsframe,variable=a))
+                self.options[field]['var'] = Tk.IntVar()
+                self.options[field]['entries'].append(Tk.Checkbutton(self.optionsframe,variable=self.options[field]['var']))
                 self.options[field]['entries'][0].grid(row=self.i,column=1)
             elif field in ['latbounds','lonbounds','timebounds','aslim','gpslim']:
                 self.options[field]['entries'].append(Tk.Entry(self.optionsframe))
@@ -140,7 +155,7 @@ class App():
                     self.options[field]['values'].append(self.options[field]['var'].get())
                 else:
                     self.options[field]['values'].append(entry.get())
-
+                    
     def EmptyFields(self):
         for field in self.options:
             if field!='reinterp':
@@ -170,23 +185,25 @@ class App():
         strlist = [insertinfo('$tmdy $thmsehms',posix=i[0],posixend=i[1]) for i in self.PC.Regdict['Time']]
         timearr = np.arange(len(strlist))
         paramar = np.zeros(len(strlist))
-        self.times['list'] = np.column_stack((timearr,paramar))
-
+        self.times['list'] = timearr
+        self.times['var'].set('')
+        self.times['menu']['menu'].delete(0, 'end')
+        for choice in strlist:
+            self.times['menu']['menu'].add_command(label=choice, command=Tk._setit(self.times['var'], choice))
         # deal with case with no isr data        
         if not self.PC.GDISR is None and   len(self.PC.params['paramheight'])>0:
             nparams = len(self.PC.params['paramheight'])
-            timearr=np.tile(timearr,nparams)
-            paramar = np.repeat(np.arange(nparams),len(strlist))
-            self.times['list'] = np.column_stack((timearr,paramar))
+            paramar = np.arange(nparams)
+            
             strlist2 = []
             for icase in self.PC.params['paramheight']:
-                stradd = ' '+icase[0] +' at ' + icase[1] +' km'
-                strlisttmp = [istr+stradd for istr in strlist]
-                strlist2+strlisttmp
-            strlist=strlist2
-        self.times['menu']['menu'].delete(0, 'end')
-        for choice in strlist:
-            self.times['menu']['menu'].add_command(label=choice, command=Tk._setit(var, choice))
+                stradd = icase[0] +' at ' + icase[1] +' km'
+                strlist2.append(stradd)
+            self.radarparam['list'] = paramar
+            self.radarparam['var'].set('')
+            self.radarparam['menu']['menu'].delete(0, 'end')
+            for choice in strlist2:
+                self.radarparam['menu']['menu'].add_command(label=choice, command=Tk._setit(self.radarparam['var'], choice))
     def savefile(self):
         self.update()
         fn = fd.asksaveasfilename(title="Save File",filetypes=[('INI','.ini')])
@@ -206,6 +223,8 @@ class App():
         config.write(cfgfile)
         cfgfile.close()
     
+    def getnewparams(self):
+        
     def loadfile(self):
         self.EmptyFields()
         fn = fd.askopenfilename(title="Load File",filetypes=[('INI','.ini')])
