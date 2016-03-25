@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os, glob,getopt, sys
 import matplotlib
 import numpy as np
 import pdb
@@ -9,14 +10,14 @@ import Tkinter as Tk
 import tkFileDialog as fd
 import ConfigParser
 from copy import copy
-from PlottingClass import PlotClass, INIOPTIONS
+from PlottingClass import PlotClass, INIOPTIONS, str2posix, posix2str
 from GeoData.plotting import insertinfo
 #INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','isrlatnum','isrlonnum','wl']
 
 
 class App():
 
-    def __init__(self,root):
+    def __init__(self,root,inputdata = {'GPS':'','ISR':'','AllSky':''}):
         
         self.root=root
         self.root.title("Mahali")
@@ -65,10 +66,11 @@ class App():
         self.optionsframe=Tk.LabelFrame(self.root,text="Options",padx=10,pady=10)
         self.optionsframe.grid(row=1,column=1,sticky='n')
         for irow, field in enumerate(self.input.keys()):
-            self.input[field]['entries']=[Tk.Entry(self.optionsframe,width=45)]
-            self.input[field]['entries'][0].grid(row=irow+1,column=1,columnspan=2)
-            self.input[field]['labels']=[Tk.Label(self.optionsframe,text=field)]
-            self.input[field]['labels'][0].grid(row=irow+1,column=0)
+            self.input[field]['entries']=Tk.Entry(self.optionsframe,width=45)
+            self.input[field]['entries'].insert(0,inputdata[field])
+            self.input[field]['entries'].grid(row=irow+1,column=1,columnspan=2)
+            self.input[field]['labels']=Tk.Label(self.optionsframe,text=field)
+            self.input[field]['labels'].grid(row=irow+1,column=0)
         # Time menu bar
         self.times={}
         self.times['var'] = Tk.StringVar(root,'None')
@@ -88,9 +90,9 @@ class App():
         
         # buttons
         self.buttons={}
-        self.buttons['ReadIn'] = Tk.Button(self.frame1, text="Read In Data", command=self.readindata)
+        self.buttons['ReadIn'] = Tk.Button(self.optionsframe, text="Read In Data", command=self.readindata)
         self.buttons['ReadIn'].grid(row=len(self.input.keys())+2,column=1,sticky='w')
-        self.buttons['ReadIn'] = Tk.Button(self.frame1, text="Update Plot", command=self.updateplot)
+        self.buttons['ReadIn'] = Tk.Button(self.optionsframe, text="Update Plot", command=self.updateplot)
         self.buttons['ReadIn'].grid(row=len(self.input.keys())+2,column=2,sticky='w')
         # Inputs
         self.i=len(self.input.keys())+3
@@ -144,9 +146,16 @@ class App():
     def updateplot(self,*args):
         curvar = self.times['var'].get()
         if curvar=='None':
+            return            
+        if self.PC is None:
             return
-            
         
+        timestr = self.times['var'].get()
+        itime = int(float(timestr.split(' ')[0]))
+        caststr =self.radarparam['var'][0]
+        icase =  int(float(caststr.split(' ')))
+        self.getnewparams()
+        (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=itime,icase=icase,cbarax=self.cbarsax)
     def update(self):
         for field in self.options:
             self.options[field]['values']=[]
@@ -169,8 +178,9 @@ class App():
         self.options['paramheight']['entries']=[]
         self.options['paramlim']['entries']=[]
     
-    def plotdata(self):
-        """ """
+    
+        
+        
     def readindata(self):
         if self.fn is None:
             return
@@ -180,9 +190,9 @@ class App():
         
         self.PC = PlotClass(self.fn,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
         self.m=self.PC.plotmap(self.fig,self.sp)
-        (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=0,icase=0,cbarax=self.cbarsax)
+        (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=0,icase=0)
         
-        strlist = [insertinfo('$tmdy $thmsehms',posix=i[0],posixend=i[1]) for i in self.PC.Regdict['Time']]
+        strlist = [insertinfo( str(j)+' $tmdy $thmsehms',posix=i[0],posixend=i[1]) for j, i in enumerate(self.PC.Regdict['Time'])]
         timearr = np.arange(len(strlist))
         paramar = np.zeros(len(strlist))
         self.times['list'] = timearr
@@ -196,8 +206,8 @@ class App():
             paramar = np.arange(nparams)
             
             strlist2 = []
-            for icase in self.PC.params['paramheight']:
-                stradd = icase[0] +' at ' + icase[1] +' km'
+            for i, icase in enumerate(self.PC.params['paramheight']):
+                stradd = str(i) +' '+ icase[0] +' at ' + str(int(icase[1])) +' km'
                 strlist2.append(stradd)
             self.radarparam['list'] = paramar
             self.radarparam['var'].set('')
@@ -225,6 +235,30 @@ class App():
     
     def getnewparams(self):
         
+        if self.PC is None:
+            return
+        paramtemp = {}
+        for field in INIOPTIONS:
+            
+            if field == 'reinterp':
+                paramtemp[field] = self.options[field]['var'].get()
+            else:
+                varval = [i.get() for i in self.options[field]['entries']]
+               
+                if field=='paramheight':
+                    paramtemp[field] = [[varval[i],float(varval[i+1])] for i in np.arange(0,len(varval)) ]
+                elif field=='paramlim':
+                    paramtemp[field] = [[float(varval[i]),float(varval[i+1])] for i in np.arange(0,len(varval)) ]
+                elif field=='timebounds':
+                    paramtemp[field] = str2posix[varval]
+                elif len(varval)>1:
+                    paramtemp[field]=[float(i) for i in varval]
+                else:
+                    paramtemp[field]=float(varval[0])
+        self.PC.params=paramtemp  
+                
+                
+                
     def loadfile(self):
         self.EmptyFields()
         fn = fd.askopenfilename(title="Load File",filetypes=[('INI','.ini')])
@@ -268,7 +302,55 @@ class App():
                 self.options[field]['entries'][0].insert(0,data[0])
                 self.options[field]['entries'][1].insert(0,data[1])
               
+
+if __name__== '__main__':
+    argv = sys.argv[1:]
+    outstr = ''' 
+             Usage: plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>, -d <date>, -b <begining time>, -e <endtime>, -p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>
+
+             or 
+             
+             python plotdata.py -h
+             
+             This script will run Mahali Plotting software. The user needs to 
+             specify the locations of the different types of data and the time 
+             limits if they don't want all of the data processed. 
+                
+            Optional arguments
+            -c Config file name.
+            -i The directory that holds all of the TEC data in ionofile formats.
+            -a The allsky data directory or GeoData file.
+            -r The ISR data file.
+            
+             Example:
+             python PlottingClass.py'''
+
+
+    try:
+        opts, args = getopt.gnu_getopt(argv,"ha:i:r:c:")
+    except getopt.GetoptError:
+        print(outstr)
+        sys.exit(2)    
     
-root=Tk.Tk()
-app=App(root)
-root.mainloop()
+    gpsloc=''
+    ASloc=''
+    ISRloc=''
+    plotdir=os.getcwd()
+    inputdata = {'GPS':'','ISR':'','AllSky':''}
+    for opt, arg in opts:
+        if opt == '-h':
+            print(outstr)
+            sys.exit()
+        elif opt in ("-i", "--ifile"):
+            inputdata['GPS'] = os.path.expanduser(arg)   
+        elif opt in ("-a", "--asky"):
+            inputdata['AllSky']=os.path.expanduser(arg)
+        elif opt in ("-r", "--radar"):
+            inputdata['ISR']=os.path.expanduser(arg)
+        elif opt in ("-c", "--config"):
+            inifile = os.path.expanduser(arg) 
+        elif opt in ('-p','--pdir'):
+            plotdir=os.path.expanduser(arg)
+    root=Tk.Tk()
+    app=App(root,inputdata)
+    root.mainloop()

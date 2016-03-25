@@ -480,9 +480,7 @@ class PlotClass(object):
             if not ip in params.keys():
                 continue
             elif ip=='timebounds':
-                dts = map(datetime.utcfromtimestamp, params[ip])
-                data = datetime.strftime(dts[0],'%m/%d/%Y %H:%M:%S') + ' ' + datetime.strftime(dts[1],'%m/%d/%Y %H:%M:%S')
-                config.set('params',ip,data)
+                config.set('params',ip,' '.join(posix2str(params[ip])))
             elif ip=='paramheight':
                 temp= [item for sublist in params[ip] for item in sublist]
                 data = ""
@@ -544,12 +542,7 @@ def readini(inifile):
     # turn the time bounds to time stamps
     if not params['timebounds']is None:
         timelist = params['timebounds']
-        (dt1,dt2) = parser.parse(timelist[0]+ ' '+timelist[1]),parser.parse(timelist[2]+ ' '+timelist[3])
-        dt1 =dt1.replace(tzinfo=pytz.utc)
-        dt2 = dt2.replace(tzinfo=pytz.utc)
-        dt1ts = (dt1 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
-        dt2ts = (dt2 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
-        params['timebounds']=[dt1ts,dt2ts]
+        params['timebounds']=str2posix(timelist)
     # change param height to a list of lists 
     if not params['paramheight'] is None:
         l1 = params['paramheight'][::2]
@@ -566,7 +559,18 @@ def readini(inifile):
         params['reinterp'] = params['reinterp'].lower()=='yes'
     return params
 
-
+def str2posix(timelist):
+    (dt1,dt2) = parser.parse(timelist[0]+ ' '+timelist[1]),parser.parse(timelist[2]+ ' '+timelist[3])
+    dt1 =dt1.replace(tzinfo=pytz.utc)
+    dt2 = dt2.replace(tzinfo=pytz.utc)
+    dt1ts = (dt1 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
+    dt2ts = (dt2 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
+    return [dt1ts,dt2ts]
+    
+def posix2str(posixlist):
+    dts = map(datetime.utcfromtimestamp, posixlist)
+    data = [datetime.strftime(dts[0],'%m/%d/%Y %H:%M:%S'), datetime.strftime(dts[1],'%m/%d/%Y %H:%M:%S')]
+    return data
 if __name__== '__main__':
     argv = sys.argv[1:]
     outstr = ''' 
