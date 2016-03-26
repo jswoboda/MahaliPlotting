@@ -132,6 +132,7 @@ class App():
         self.AddParam()
 
     def AddParam(self):
+        """ This will add ISR parameters and heights to the gui."""
         self.i+=1
         self.options['paramheight']['entries'].append(Tk.Entry(self.optionsframe))
         self.options['paramheight']['entries'][2*self.numparams].grid(row=self.i,column=0)
@@ -144,6 +145,9 @@ class App():
         self.numparams+=1
 
     def updateplot(self,*args):
+        """ This will update the plot with the new plotting params, time period or
+        if a different ISR measurement is used. This is all the command for the 
+        update plot button and the pull down menus."""
         curvar = self.times['var'].get()
         if curvar=='None':
             return            
@@ -153,9 +157,10 @@ class App():
         timestr = self.times['var'].get()
         itime = int(float(timestr.split(' ')[0]))
         caststr =self.radarparam['var'][0]
-        icase =  int(float(caststr.split(' ')))
+        icase =  int(float(caststr.split(' ')[0]))
         self.getnewparams()
         (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=itime,icase=icase,cbarax=self.cbarsax)
+        
     def update(self):
         for field in self.options:
             self.options[field]['values']=[]
@@ -182,6 +187,7 @@ class App():
         
         
     def readindata(self):
+        """ This will create the plot class object that will be used to plot all of the data. """
         if self.fn is None:
             return
         gpsloc = self.input['GPS']['entries'].get()
@@ -214,27 +220,11 @@ class App():
             self.radarparam['menu']['menu'].delete(0, 'end')
             for choice in strlist2:
                 self.radarparam['menu']['menu'].add_command(label=choice, command=Tk._setit(self.radarparam['var'], choice))
-    def savefile(self):
-        self.update()
-        fn = fd.asksaveasfilename(title="Save File",filetypes=[('INI','.ini')])
-        cfgfile = open(fn,'w')
-        config = ConfigParser.ConfigParser()
-        config.add_section('params')
-        config.add_section('paramsnames')
-        for field in self.options:
-            if field=='reinterp':
-                if self.options[field]['values'][0]:
-                    config.set('params',field,'Yes')
-                else:
-                    config.set('params',field,'No')
-            else:
-                config.set('params',field," ".join(self.options[field]['values']))
-                config.set('paramsnames',field,field)
-        config.write(cfgfile)
-        cfgfile.close()
     
     def getnewparams(self):
-        
+        """ This will take all of the terms in the entries and update the param
+            dictionary in the Plot Class object. If no Plot Class exists then 
+            the fucntion will become a pass through."""        
         if self.PC is None:
             return
         paramtemp = {}
@@ -257,6 +247,28 @@ class App():
                     paramtemp[field]=float(varval[0])
         self.PC.params=paramtemp  
                 
+    #%% Print and Save functions
+    # XXX May use Plot class version
+    def savefile(self):
+        self.update()
+        fn = fd.asksaveasfilename(title="Save File",filetypes=[('INI','.ini')])
+        cfgfile = open(fn,'w')
+        config = ConfigParser.ConfigParser()
+        config.add_section('params')
+        config.add_section('paramsnames')
+        for field in self.options:
+            if field=='reinterp':
+                if self.options[field]['values'][0]:
+                    config.set('params',field,'Yes')
+                else:
+                    config.set('params',field,'No')
+            else:
+                config.set('params',field," ".join(self.options[field]['values']))
+                config.set('paramsnames',field,field)
+        config.write(cfgfile)
+        cfgfile.close()
+    
+    
                 
                 
     def loadfile(self):
@@ -302,7 +314,7 @@ class App():
                 self.options[field]['entries'][0].insert(0,data[0])
                 self.options[field]['entries'][1].insert(0,data[1])
               
-
+#%% Main function  the command line can be used to quickly populate the gui.
 if __name__== '__main__':
     argv = sys.argv[1:]
     outstr = ''' 
