@@ -5,13 +5,12 @@ import numpy as np
 import pdb
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import Tkinter as Tk
 import tkFileDialog as fd
 import ConfigParser
 from copy import copy
-from PlottingClass import PlotClass, INIOPTIONS, str2posix, posix2str
+from PlottingClass import PlotClass, INIOPTIONS, str2posix, posix2str, readini
 from GeoData.plotting import insertinfo
 #INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','isrlatnum','isrlonnum','wl']
 
@@ -49,12 +48,10 @@ class App():
         
         self.plotframe=Tk.Frame(self.root,padx=10,pady=10)
         self.plotframe.grid(row=1,column=0, sticky='n')
-        self.fig=Figure(figsize=(6, 5), dpi=100)
+        self.fig=plt.Figure(figsize=(12, 9), dpi=100)
         self.sp=self.fig.add_subplot(111)
         self.sp.plot(np.arange(100))
-        self.sp.set_title("Plot Title")
-        self.sp.set_xlabel("X")
-        self.sp.set_ylabel("Y")
+        
         self.canvas=FigureCanvasTkAgg(self.fig,master=self.plotframe)
         self.canvas.show()
         self.canvas.get_tk_widget().grid(row=1,column=0)
@@ -198,7 +195,7 @@ class App():
         self.PC = PlotClass(self.fn,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
         self.m=self.PC.plotmap(self.fig,self.sp)
         (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=0,icase=0)
-        plt.draw()
+        self.canvas.draw()
         strlist = [insertinfo( str(j)+' $tmdy $thmsehms',posix=i[0],posixend=i[1]) for j, i in enumerate(self.PC.Regdict['Time'])]
         timearr = np.arange(len(strlist))
         paramar = np.zeros(len(strlist))
@@ -241,7 +238,7 @@ class App():
                 elif field=='paramlim':
                     paramtemp[field] = [[float(varval[i]),float(varval[i+1])] for i in np.arange(0,len(varval)) ]
                 elif field=='timebounds':
-                    paramtemp[field] = str2posix[varval]
+                    paramtemp[field] = str2posix(varval)
                 elif len(varval)>1:
                     paramtemp[field]=[float(i) for i in varval]
                 else:
@@ -274,46 +271,47 @@ class App():
                 
     def loadfile(self):
         self.EmptyFields()
+        
         fn = fd.askopenfilename(title="Load File",filetypes=[('INI','.ini')])
-        config = ConfigParser.ConfigParser()
-        config.read(fn)
+        params=readini(fn)
+        
         self.fn = fn
-        data = config.get('params','paramlim').split(" ")
-        nparams=len(data)/2
+        nparams=len(params['paramlim'])
         for n in range(nparams):
             self.AddParam()
         
-        for field in config.options('params'):
+        for field in params.keys():
             if not field in INIOPTIONS:
                 continue
-            data = config.get('params',field).split(" ")
+            data = params[field]
 
             if field=='paramheight':
                 for n in range(nparams):
-                    self.options['paramheight']['entries'][2*n].insert(0,data[2*n])
-                    self.options['paramheight']['entries'][2*n+1].insert(0,data[2*n+1])
+                    self.options['paramheight']['entries'][2*n].insert(0,str(data[n][0]))
+                    self.options['paramheight']['entries'][2*n+1].insert(0,str(data[n][1]))
 
             elif field=='paramlim':
                 for n in range(nparams):
-                    self.options['paramlim']['entries'][2*n].insert(0,data[2*n])
-                    self.options['paramlim']['entries'][2*n+1].insert(0,data[2*n+1])
+                    self.options['paramlim']['entries'][2*n].insert(0,str(data[n][0]))
+                    self.options['paramlim']['entries'][2*n+1].insert(0,str(data[n][1]))
 
             elif field=='timebounds':
-                self.options[field]['entries'][0].insert(0,data[0]+" "+data[1])
-                self.options[field]['entries'][1].insert(0,data[2]+" "+data[3])
+                data = posix2str(data)
+                self.options[field]['entries'][0].insert(0,data[0])
+                self.options[field]['entries'][1].insert(0,data[1])
 
-            elif len(data)==1:
+            elif not hasattr(data, "__len__"):
                 if field=='reinterp':
-                    if data[0]=='Yes':
+                    if data:
                         self.options[field]['var'].set(1)
                     else:
                         self.options[field]['var'].set(0)
                 else:
-                    self.options[field]['entries'][0].insert(0,data[0])
+                    self.options[field]['entries'][0].insert(0,str(data))
 
-            if len(data)==2:
-                self.options[field]['entries'][0].insert(0,data[0])
-                self.options[field]['entries'][1].insert(0,data[1])
+            elif len(data)==2:
+                self.options[field]['entries'][0].insert(0,str(data[0]))
+                self.options[field]['entries'][1].insert(0,str(data[1]))
               
 #%% Main function  the command line can be used to quickly populate the gui.
 if __name__== '__main__':

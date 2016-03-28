@@ -465,54 +465,54 @@ class PlotClass(object):
         ax.set_title('\n'.join(titlelist) )
         return allhands,cbarax
             
-    
+    def writeiniclass(self,fname):
+        writeini(self.params,fname)
 #%% Write out file
-    def writeini(self,fname):
-        params=self.params
+def writeini(params,fname):
+    
+    cfgfile = open(fname,'w')
+    config = ConfigParser.ConfigParser(allow_no_value = True)
+    
+    config.add_section('params')
+    config.add_section('paramsnames')
+    for ip in INIOPTIONS:
         
-        cfgfile = open(fname,'w')
-        config = ConfigParser.ConfigParser(allow_no_value = True)
-        
-        config.add_section('params')
-        config.add_section('paramsnames')
-        for ip in INIOPTIONS:
-            
-            if not ip in params.keys():
-                continue
-            elif ip=='timebounds':
-                config.set('params',ip,' '.join(posix2str(params[ip])))
-            elif ip=='paramheight':
-                temp= [item for sublist in params[ip] for item in sublist]
-                data = ""
-                for a in temp:
-                    data += str(a)
-                    data += " "
-                config.set('params',ip,data)
-            elif ip=='paramlim':
-                temp= [item for sublist in params[ip] for item in sublist]
-                data = ""
-                for a in temp:
-                    data += str(a)
-                    data += " "
-                config.set('params',ip,data)
-            elif ip=='reinterp':
-                if params[ip]:
-                    data='Yes'
-                else:
-                    data='No'
-                config.set('params',ip,data)
-            elif type(params[ip]) in (sp.ndarray,list):
-                data = ""
-                for a in params[ip]:
-                    data += str(a)
-                    data += " "
-                config.set('params',ip,data)
+        if not ip in params.keys():
+            continue
+        elif ip=='timebounds':
+            config.set('params',ip,' '.join(posix2str(params[ip])))
+        elif ip=='paramheight':
+            temp= [item for sublist in params[ip] for item in sublist]
+            data = ""
+            for a in temp:
+                data += str(a)
+                data += " "
+            config.set('params',ip,data)
+        elif ip=='paramlim':
+            temp= [item for sublist in params[ip] for item in sublist]
+            data = ""
+            for a in temp:
+                data += str(a)
+                data += " "
+            config.set('params',ip,data)
+        elif ip=='reinterp':
+            if params[ip]:
+                data='Yes'
             else:
-                config.set('params',ip,str(params[ip]))
-            config.set('paramsnames',ip,ip)
-        config.write(cfgfile)
-        cfgfile.close()
-            
+                data='No'
+            config.set('params',ip,data)
+        elif type(params[ip]) in (sp.ndarray,list):
+            data = ""
+            for a in params[ip]:
+                data += str(a)
+                data += " "
+            config.set('params',ip,data)
+        else:
+            config.set('params',ip,str(params[ip]))
+        config.set('paramsnames',ip,ip)
+    config.write(cfgfile)
+    cfgfile.close()
+    #%% Read in file        
 def readini(inifile):
 
     config = ConfigParser.ConfigParser()
