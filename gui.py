@@ -6,6 +6,7 @@ import pdb
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 import Tkinter as Tk
 import tkFileDialog as fd
 import ConfigParser
@@ -197,7 +198,7 @@ class App():
         self.PC = PlotClass(self.fn,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
         self.m=self.PC.plotmap(self.fig,self.sp)
         (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=0,icase=0)
-        
+        plt.draw()
         strlist = [insertinfo( str(j)+' $tmdy $thmsehms',posix=i[0],posixend=i[1]) for j, i in enumerate(self.PC.Regdict['Time'])]
         timearr = np.arange(len(strlist))
         paramar = np.zeros(len(strlist))
