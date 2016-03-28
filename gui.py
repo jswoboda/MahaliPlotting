@@ -156,7 +156,7 @@ class App():
         
         timestr = self.times['var'].get()
         itime = int(float(timestr.split(' ')[0]))
-        caststr =self.radarparam['var'][0]
+        caststr =self.radarparam['var'].get()
         icase =  int(float(caststr.split(' ')[0]))
         self.getnewparams()
         (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=itime,icase=icase,cbarax=self.cbarsax)
