@@ -375,8 +375,7 @@ class PlotClass(object):
                 allskylist - A list of list which determines which allsky times are used.
         """
         
-        if len(cbarax)==0:
-            firstbar = True
+
         optbnds = self.params['aslim']
         gam=self.params['asgamma']
         
@@ -385,7 +384,7 @@ class PlotClass(object):
         allhands = [[]]
         
         titlelist = []
-        if firstbar:
+        if len(cbarax)==0:
             wid = .3/self.numGD
             cbarax=[fig.add_axes([.7+i*wid,.3,wid/2.,.4]) for i in range(self.numGD)]
             fig.tight_layout(rect=[0,.05,.7,.95])
@@ -421,13 +420,12 @@ class PlotClass(object):
                                 time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
             slice3.set_norm(colors.PowerNorm(gamma=gam,vmin=optbnds[0],vmax=optbnds[1]))
             titlelist.append(insertinfo('All Sky $tmdy $thmsehms',posix=self.GDAS.times[iop,0],posixend=self.GDAS.times[iop,1]))
-            
             cbaras = plt.colorbar(slice3,cax=cbarax[cbcur])
             cbcur+=1
             cbaras.set_label('All Sky Scale')
             minz=slice3.get_zorder()
             for i in reversed(allhands[0]):
-                minz=sp.minimum(minz,i.get_zorder)
+                minz=sp.minimum(minz,i.get_zorder())
                 i.set_zorder(i.get_zorder()+1)
             slice3.set_zorder(minz)
             allhands.append(slice3)

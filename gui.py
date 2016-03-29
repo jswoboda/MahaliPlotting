@@ -17,12 +17,12 @@ from GeoData.plotting import insertinfo
 
 class App():
 
-    def __init__(self,root,inputdata = {'GPS':'','ISR':'','AllSky':''}):
+    def __init__(self,root,fn=None,inputdata = {'GPS':'','ISR':'','AllSky':''}):
         
         self.root=root
         self.root.title("Mahali")
         
-        self.fn = None
+        self.fn = fn
         self.m = None
         self.PC = None
         self.allhands=[]
@@ -128,7 +128,13 @@ class App():
         self.i+=1
         self.numparams=0
         self.AddParam()
-
+        
+        # Read in stuff from command line
+        if not fn is None:
+            self.loadfile(fn)
+            files = [len(inputdata[i]) for i in inputdata.keys()]
+            if np.any(files>0):
+                self.readindata()
     def AddParam(self):
         """ This will add ISR parameters and heights to the gui."""
         self.i+=1
@@ -153,11 +159,14 @@ class App():
             return
         
         timestr = self.times['var'].get()
+        self.times['var'].set(timestr)
         itime = int(float(timestr.split(' ')[0]))
         caststr =self.radarparam['var'].get()
+        self.radarparam['var'].set(caststr)
         icase =  int(float(caststr.split(' ')[0]))
         self.getnewparams()
         (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=itime,icase=icase,cbarax=self.cbarsax)
+        self.canvas.draw()
         
     def update(self):
         for field in self.options:
@@ -203,7 +212,8 @@ class App():
         self.times['var'].set('')
         self.times['menu']['menu'].delete(0, 'end')
         for choice in strlist:
-            self.times['menu']['menu'].add_command(label=choice, command=Tk._setit(self.times['var'], choice))
+            self.times['menu']['menu'].add_command(label=choice, command=self.updateplot)
+            self.times['var'].set(strlist[0])
         # deal with case with no isr data        
         if not self.PC.GDISR is None and   len(self.PC.params['paramheight'])>0:
             nparams = len(self.PC.params['paramheight'])
@@ -217,7 +227,8 @@ class App():
             self.radarparam['var'].set('')
             self.radarparam['menu']['menu'].delete(0, 'end')
             for choice in strlist2:
-                self.radarparam['menu']['menu'].add_command(label=choice, command=Tk._setit(self.radarparam['var'], choice))
+                self.radarparam['menu']['menu'].add_command(label=choice, command=self.updateplot)
+                self.radarparam['var'].set(strlist2[0])
     
     def getnewparams(self):
         """ This will take all of the terms in the entries and update the param
@@ -227,18 +238,19 @@ class App():
             return
         paramtemp = {}
         for field in INIOPTIONS:
-            
             if field == 'reinterp':
                 paramtemp[field] = self.options[field]['var'].get()
             else:
                 varval = [i.get() for i in self.options[field]['entries']]
                
                 if field=='paramheight':
-                    paramtemp[field] = [[varval[i],float(varval[i+1])] for i in np.arange(0,len(varval)) ]
+                    paramtemp[field] = [[varval[2*i],float(varval[2*i+1])] for i in np.arange(0,len(varval)/2) ]
                 elif field=='paramlim':
-                    paramtemp[field] = [[float(varval[i]),float(varval[i+1])] for i in np.arange(0,len(varval)) ]
+                    paramtemp[field] = [[float(varval[2*i]),float(varval[2*i+1])] for i in np.arange(0,len(varval)/2) ]
                 elif field=='timebounds':
-                    paramtemp[field] = str2posix(varval)
+                    splist = [i.split(' ') for i in varval ]
+                    timelist = [splist[0][0],splist[0][1],splist[1][0],splist[1][1]]
+                    paramtemp[field] = str2posix(timelist)
                 elif len(varval)>1:
                     paramtemp[field]=[float(i) for i in varval]
                 else:
@@ -269,10 +281,11 @@ class App():
     
                 
                 
-    def loadfile(self):
+    def loadfile(self,fn=None):
         self.EmptyFields()
         
-        fn = fd.askopenfilename(title="Load File",filetypes=[('INI','.ini')])
+        if not (fn is None):
+            fn = fd.askopenfilename(title="Load File",filetypes=[('INI','.ini')])
         params=readini(fn)
         
         self.fn = fn
@@ -348,6 +361,7 @@ if __name__== '__main__':
     ISRloc=''
     plotdir=os.getcwd()
     inputdata = {'GPS':'','ISR':'','AllSky':''}
+    inifile=None
     for opt, arg in opts:
         if opt == '-h':
             print(outstr)
@@ -363,5 +377,5 @@ if __name__== '__main__':
         elif opt in ('-p','--pdir'):
             plotdir=os.path.expanduser(arg)
     root=Tk.Tk()
-    app=App(root,inputdata)
+    app=App(root,inifile,inputdata)
     root.mainloop()
