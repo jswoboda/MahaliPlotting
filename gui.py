@@ -74,7 +74,7 @@ class App():
         self.times['var'] = Tk.StringVar(root,'None')
         self.times['options'] = ['None']
         self.times['list'] = [0]
-        self.times['menu'] = Tk.OptionMenu(self.optionsframe,self.times['var'],tuple(self.times['options']),command=self.updateplot)
+        self.times['menu'] = Tk.OptionMenu(self.optionsframe,self.times['var'],tuple(self.times['options']))
         self.times['menu'].grid(row=len(self.input.keys())+1,column=1)
         self.times['label'] = Tk.Label(self.optionsframe,text='Choose Time/Parmameter')
         self.times['label'].grid(row=len(self.input.keys())+1,column=0)
@@ -83,7 +83,7 @@ class App():
         self.radarparam['var'] = Tk.StringVar(root,'None')
         self.radarparam['options'] = ['None']
         self.radarparam['list'] = [0]
-        self.radarparam['menu'] = Tk.OptionMenu(self.optionsframe,self.radarparam['var'],tuple(self.radarparam['options']),command=self.updateplot)
+        self.radarparam['menu'] = Tk.OptionMenu(self.optionsframe,self.radarparam['var'],tuple(self.radarparam['options']))
         self.radarparam['menu'].grid(row=len(self.input.keys())+1,column=2)
         
         # buttons
@@ -212,7 +212,7 @@ class App():
         self.times['var'].set('')
         self.times['menu']['menu'].delete(0, 'end')
         for choice in strlist:
-            self.times['menu']['menu'].add_command(label=choice, command=self.updateplot)
+            self.times['menu']['menu'].add_command(label=choice, command=Tk._setit(self.times['var'], choice))
             self.times['var'].set(strlist[0])
         # deal with case with no isr data        
         if not self.PC.GDISR is None and   len(self.PC.params['paramheight'])>0:
@@ -227,8 +227,8 @@ class App():
             self.radarparam['var'].set('')
             self.radarparam['menu']['menu'].delete(0, 'end')
             for choice in strlist2:
-                self.radarparam['menu']['menu'].add_command(label=choice, command=self.updateplot)
-                self.radarparam['var'].set(strlist2[0])
+                self.radarparam['menu']['menu'].add_command(label=choice, command=Tk._setit(self.radarparam['var'], choice))
+            self.radarparam['var'].set(strlist2[0])
     
     def getnewparams(self):
         """ This will take all of the terms in the entries and update the param
