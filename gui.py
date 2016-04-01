@@ -168,6 +168,9 @@ class App():
             if hasattr(ihand, "__len__"):
                 for ihand2 in ihand:
                     ihand2.remove()
+            elif hasattr(ihand,'collections'):
+                for ihand2 in ihand.collections:
+                    ihand2.remove()
             else:
                 ihand.remove()
         (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=itime,icase=icase,cbarax=self.cbarsax)
@@ -211,6 +214,9 @@ class App():
         for ihand in self.allhands:
             if hasattr(ihand, "__len__"):
                 for ihand2 in ihand:
+                    ihand2.remove()
+            elif hasattr(ihand,'collections'):
+                for ihand2 in ihand.collections:
                     ihand2.remove()
             else:
                 ihand.remove()

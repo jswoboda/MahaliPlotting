@@ -222,6 +222,7 @@ class PlotClass(object):
         # teclist is a Ntime length list
         teclist = [[]]*(nptimes-1) 
         regdict = {'TEC':teclist,'AS':[None]*(nptimes-1),'ISR':[None]*(nptimes-1),'Time':timelists}
+        
         if not self.GDGPS is None:
            for itasn in range(len(tectime)-1):        
                 itback=tectime[itasn]
@@ -265,6 +266,7 @@ class PlotClass(object):
             regdict['Time']=timelist2
             regdict['ISR'] = [None]*len(GPS2ASsingle)
             if (not self.GDISR is None):
+                self.GDAS=self.GDAS.timeslice(sp.unique(GPS2ASsingle))
                 as2radar =self.GDAS.timeregister(self.GDISR)
                 
                 teclist3=[]
@@ -274,9 +276,9 @@ class PlotClass(object):
                 for j1,jasval in enumerate(as2radar):
                     jlen=len(jasval)
                     AS2ISRsingle =AS2ISRsingle +jasval.tolist()
-                    teclist3=teclist3+[teclist2[jasval]]*jlen
-                    timelist3=timelist3+[timelist2[jasval]]*jlen
-                    GPS2ASsingle2 = GPS2ASsingle2+[GPS2ASsingle[jasval]]*jlen
+                    teclist3=teclist3+[teclist2[j1]]*jlen
+                    timelist3=timelist3+[timelist2[j1]]*jlen
+                    GPS2ASsingle2 = GPS2ASsingle2+[GPS2ASsingle[j1]]*jlen
                 
                 regdict['TEC']=teclist3
                 regdict['AS']=GPS2ASsingle2
@@ -305,6 +307,7 @@ class PlotClass(object):
             GPS2ISRsingle = []
             teclist2 =[]
             timelist2 = []
+            
             #repeat for all sky values
             for i1,ilen in enumerate(GPS2ISRlen):
                 GPS2ISRsingle=GPS2ASsingle+GPS2ISR[i1].tolist()
