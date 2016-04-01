@@ -284,7 +284,7 @@ class App():
     def loadfile(self,fn=None):
         self.EmptyFields()
         
-        if not (fn is None):
+        if (fn is None):
             fn = fd.askopenfilename(title="Load File",filetypes=[('INI','.ini')])
         params=readini(fn)
         
