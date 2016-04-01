@@ -48,7 +48,7 @@ class App():
         
         self.plotframe=Tk.Frame(self.root,padx=10,pady=10)
         self.plotframe.grid(row=1,column=0, sticky='n')
-        self.fig=plt.Figure(figsize=(12, 9), dpi=100)
+        self.fig=plt.Figure(figsize=(8, 6), dpi=100)
         self.sp=self.fig.add_subplot(111)
         self.sp.plot(np.arange(100))
         
