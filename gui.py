@@ -25,7 +25,6 @@ class App():
         self.fn = fn
         self.m = None
         self.PC = None
-        self.allhands=[]
         self.cbarsax = []        
         bd = {'entries':[],'labels':[]}
         self.input = {'ISR':copy(bd),'GPS':copy(bd),'AllSky':copy(bd)}
@@ -50,7 +49,7 @@ class App():
         self.plotframe.grid(row=1,column=0, sticky='n')
         self.fig=plt.Figure(figsize=(8, 6), dpi=100)
         self.sp=self.fig.add_subplot(111)
-        self.sp.plot(np.arange(100))
+        self.allhands = [self.sp.plot(np.arange(100))]
         
         self.canvas=FigureCanvasTkAgg(self.fig,master=self.plotframe)
         self.canvas.show()
@@ -165,6 +164,12 @@ class App():
         self.radarparam['var'].set(caststr)
         icase =  int(float(caststr.split(' ')[0]))
         self.getnewparams()
+        for ihand in self.allhands:
+            if hasattr(ihand, "__len__"):
+                for ihand2 in ihand:
+                    ihand2.remove()
+            else:
+                ihand.remove()
         (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=itime,icase=icase,cbarax=self.cbarsax)
         self.canvas.draw()
         
@@ -203,6 +208,12 @@ class App():
         
         self.PC = PlotClass(self.fn,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
         self.m=self.PC.plotmap(self.fig,self.sp)
+        for ihand in self.allhands:
+            if hasattr(ihand, "__len__"):
+                for ihand2 in ihand:
+                    ihand2.remove()
+            else:
+                ihand.remove()
         (self.allhands,self.cbarsax)=self.PC.plotsingle(self.m,self.sp,self.fig,timenum=0,icase=0)
         self.canvas.draw()
         strlist = [insertinfo( str(j)+' $tmdy $thmsehms',posix=i[0],posixend=i[1]) for j, i in enumerate(self.PC.Regdict['Time'])]
@@ -262,21 +273,23 @@ class App():
     def savefile(self):
         self.update()
         fn = fd.asksaveasfilename(title="Save File",filetypes=[('INI','.ini')])
-        cfgfile = open(fn,'w')
-        config = ConfigParser.ConfigParser()
-        config.add_section('params')
-        config.add_section('paramsnames')
-        for field in self.options:
-            if field=='reinterp':
-                if self.options[field]['values'][0]:
-                    config.set('params',field,'Yes')
-                else:
-                    config.set('params',field,'No')
-            else:
-                config.set('params',field," ".join(self.options[field]['values']))
-                config.set('paramsnames',field,field)
-        config.write(cfgfile)
-        cfgfile.close()
+        self.update()
+        self.PC.writeiniclass(fn)
+#        cfgfile = open(fn,'w')
+#        config = ConfigParser.ConfigParser()
+#        config.add_section('params')
+#        config.add_section('paramsnames')
+#        for field in self.options:
+#            if field=='reinterp':
+#                if self.options[field]['values'][0]:
+#                    config.set('params',field,'Yes')
+#                else:
+#                    config.set('params',field,'No')
+#            else:
+#                config.set('params',field," ".join(self.options[field]['values']))
+#                config.set('paramsnames',field,field)
+#        config.write(cfgfile)
+#        cfgfile.close()
     
     
                 
