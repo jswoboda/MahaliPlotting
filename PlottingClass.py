@@ -344,7 +344,9 @@ class PlotClass(object):
         return m
         
     def plotalldata(self,plotdir,m,ax,fig,):
-        """ """
+        """ This method will plot all of the images from the time period specified.
+        The png files will be numbered and have the ISR parameter name in the title.
+        The user can easily manipulate the files using comand line."""
         
         timelist = self.regcell['Time']
         Nt = len(timelist)
@@ -352,16 +354,18 @@ class PlotClass(object):
         fmstr = '{0:0>'+str(strlen)+'}_'
         plotnum=0
         cbarax = []
-        if self.params['paramheight'] is None:
+        if self.params['paramheight'] is None or self.GDISR is None:
             Ncase = 1
+            paramstrs = ['']
         else:
             Ncase = len(self.params['paramheight'])
+            paramstrs = [i[0]+str(int(i[1])) for i in self.params['paramheight']]
         Nplot = Ncase*Nt
         for itime in range(Nt):
             for icase in range(Ncase):
                 hands,cbarax = self.plotsingle(m,ax,fig,itime,icase,cbarax)
                 print('Ploting {0} of {1} plots'.format(plotnum,Nplot))
-                plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASwGPS.png'))
+                plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+paramstrs[icase]+'ASwGPS.png'))
                 
                 for i in hands[0]:
                     i.remove()
