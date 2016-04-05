@@ -65,7 +65,62 @@ def PlotTECdiff(gpsloc,timelist,satnum,sublist,pname='mahdiff.png',tectype = 'TE
     axmat.set_ylabel(tectype)
     plt.savefig(pname)
     
-
+def plottecvstime(TECGD,satnum,fig,ax):
+    """ This will plot a single set of TEC data.
+        Inputs
+        TECGD - A GeoData instance that has been filtered by time to the desired period.
+        satnum - The number of the satilite that will be plotted.
+        fig - The figure handle.
+        ax - the axis handle.
+        outputs
+        lines - The handle for the line plot
+    """
+    keep = TECGD.data['satnum']==satnum
+    times = TECGD.times[:,0][keep]
+    vtec = TECGD.data['TEC'][keep]
+    dts = map(datetime.datetime.utcfromtimestamp, times)
+    dtfmt = DateFormatter('%H:%M:%S')
+    
+    lines = ax.plot(dts,vtec)
+    
+    ax.xaxis.set_major_locator(HourLocator())
+    ax.xaxis.set_major_formatter(dtfmt)
+    ax.set_ylabel('TEC')
+    ax.set_ylim([-10.,30.])
+    ax.set_title('Data From Sat {0:d}'.format(satnum))
+    return lines
+    
+def plotalltecvstime(TEClist1,flist1,satnum,pfname='TECMaps'):
+    """ This will plot a single set of TEC data.
+        Inputs
+        TEClist1 - A list of GeoData objects that have been filtered by time to the desired period.
+        flist1 - The name of the files that the goedata objects are from
+        satnum - The number of the satilite that will be plotted.
+        pfname - The name of the plot."""
+        
+    flist=[]
+    TEClist = []       
+    for i,j in enumerate(TEClist1):
+        if np.any(j.data['satnum']==satnum):
+            TEClist.append(j)
+            flist.append(flist1[i])
+        
+    col = 2.
+    numr = np.ceil(len(flist)/col)
+    
+    dxs = 4.0
+    dys = 2.
+    fig, axmat = plt.subplots(int(numr),int(col),dpi=300,sharex=True,sharey=True,figsize=(dxs*col,dys*(numr+1)))
+    plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+    axvec= axmat.flatten()
+    
+    dnames = [os.path.splitext(os.path.split(i)[-1])[0] for i in flist]
+    for i,iGD in enumerate(TEClist):
+        lines = plottecvstime(iGD,satnum,fig,axvec[i])
+        axvec[i].set_title(dnames[i])
+    plt.suptitle('Data from Sat: {0:d}'.format(satnum))
+    plt.subplots_adjust(top=0.95)
+    plt.savefig(pfname)
 if __name__== '__main__':
     
     argv = sys.argv[1:]

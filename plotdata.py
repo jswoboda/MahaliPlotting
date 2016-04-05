@@ -291,7 +291,7 @@ def plottecvstime(TECGD,satnum,fig,ax):
     
     keep = TECGD.data['satnum']==satnum
     times = TECGD.times[:,0][keep]
-    vtec = TECGD.data['vTEC'][keep]
+    vtec = TECGD.data['TEC'][keep]
     dts = map(datetime.utcfromtimestamp, times)
     dtfmt = DateFormatter('%H:%M:%S')
     
@@ -299,8 +299,7 @@ def plottecvstime(TECGD,satnum,fig,ax):
     
     ax.xaxis.set_major_locator(HourLocator())
     ax.xaxis.set_major_formatter(dtfmt)
-    ax.set_xlabel('Time')
-    ax.set_ylabel('vTEC')
+    ax.set_ylabel('TEC')
     ax.set_title('Data From Sat {0:d}'.format(satnum))
     return lines
     
