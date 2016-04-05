@@ -278,6 +278,7 @@ class App():
     # XXX May use Plot class version
     def savefile(self):
         self.update()
+        self.getnewparams()
         fn = fd.asksaveasfilename(title="Save File",filetypes=[('INI','.ini')])
         self.update()
         self.PC.writeiniclass(fn)

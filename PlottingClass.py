@@ -375,11 +375,13 @@ class PlotClass(object):
             
             
     def plotsingle(self,m,ax,fig,timenum=0,icase=0,cbarax=[]):
-        """ Make a set of plots when given both all sky ad GPS are given.
+        """ Make single plot given the desired time and number associated with
+            the desired ISR param.
             Inputs
-                allsky_data - The all sky data as a GeoData object.
-                TEClist - The of GeoData objects derived from the ionofiles.
-                allskylist - A list of list which determines which allsky times are used.
+                m - The map handle that is used to plot everything.
+                                
+                timenum - The of GeoData objects derived from the ionofiles.
+                icase - A list of list which determines which allsky times are used.
         """
         
 
