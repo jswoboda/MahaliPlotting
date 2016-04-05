@@ -2,18 +2,19 @@
 """
 
 """
-import os, glob,getopt,sys
+import os, glob,getopt,sys,errno
 import scipy as sp
-import matplotlib
-matplotlib.use('Agg') # for use where you're running on a command line
-import pdb
-import matplotlib.pyplot as plt
-import matplotlib.colors as colors
-from matplotlib.dates import YearLocator, MonthLocator, DateFormatter,MinuteLocator, HourLocator
 import pytz
 from datetime import datetime
 from dateutil import parser
+#
+import matplotlib
+matplotlib.use('Agg') # for use where you're running on a command line
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+from matplotlib.dates import  DateFormatter, HourLocator#,YearLocator, MonthLocator,MinuteLocator
 from mpl_toolkits.basemap import Basemap
+#
 from GeoData.plotting import scatterGD, slice2DGD,insertinfo
 from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
@@ -25,32 +26,38 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
     Inputs
         allskydir - The directory that holds the FITS files for the allsky data.
             If a None is passed then a the allsky is not plotted.
-        ionofdir - The directory that holds all of the ionofiles. If a None is 
+        ionofdir - The directory that holds all of the ionofiles. If a None is
             passed then a the allsky is not plotted.
         plotdir - The directory where the plots are stored.
         wl - The wavelength of the allsky light in a string.
         tint - The number of minutes the GPS data is plotted over. Default is 5.
         reinterp - A bool that determines if the GeoData files for the optical data
             should be remade.
-        timelim - A list that shows the time boundries in posix."""
+        timelim - A list that shows the time boundaries in posix."""
 #    latlim2 = [45.,75.]
 #    lonlim2 = [-185.,-125.]
-    
-    
-        #%% Make map
+#%% Make map
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_axes([0.1,0.1,0.8,0.8])
     # create polar stereographic Basemap instance.
-    m = Basemap(projection='merc',lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),\
-        lat_ts=sp.mean(latlim2),llcrnrlat=latlim2[0],urcrnrlat=latlim2[1],\
-        llcrnrlon=lonlim2[0],urcrnrlon=lonlim2[1],\
-        rsphere=6371200.,resolution='i',ax=ax)
+    if not latlim2:
+        latlim2=[-89.,89.]
+    if not lonlim2:
+        lonlim2=[-179.,179.]
+
+    m = Basemap(projection='merc',
+            lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),
+            lat_ts=sp.mean(latlim2),
+            llcrnrlat=latlim2[0],urcrnrlat=latlim2[1],
+            llcrnrlon=lonlim2[0],urcrnrlon=lonlim2[1],
+            rsphere=6371200.,resolution='i',ax=ax)
+
     # draw coastlines, state and country boundaries, edge of map.
     #m.drawcoastlines()
 #    m.drawstates()
 #    m.drawcountries()
     shp_info = m.readshapefile('st99_d00','states',drawbounds=True)
-    
+
     merstep = sp.round_((lonlim2[1]-lonlim2[0])/5.)
     parstep = sp.round_((latlim2[1]-latlim2[0])/5.)
     meridians=sp.arange(lonlim2[0],lonlim2[1],merstep)
@@ -71,7 +78,7 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
             TECGD = GeoData(readIonofiles,(ifile,))
             if timelim is not None:
                 TECGD.timereduce(timelim)
-                
+
             if len(TECGD.times)==0:
                 continue
             TEClist.append(TECGD)
@@ -80,13 +87,15 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
 
     if allskydir is not None:
         isallsky=True
-   
+
         wlstr ='*_0'+wl+'_*.FITS'
         interpsavedfile = os.path.join(allskydir,'interp'+wl+'.h5')
         if reinterp or (not os.path.isfile(interpsavedfile)):
             pfalla = sp.array([65.136667,-147.447222,689.])
-    
+
             flist558 = glob.glob(os.path.join(allskydir,wlstr))
+            if not flist558:
+                raise ValueError('no allsky files found in {}'.format(allskydir))
             allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla))
             if timelim is not None:
                 allsky_data.timereduce(timelim)
@@ -100,11 +109,11 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
             lonlim=[xcoords[:,1].min(),xcoords[:,1].max()]
             nlat = 256
             nlon = 256
-    
+
             latvec = sp.linspace(latlim[0],latlim[1],nlat)
             lonvec = sp.linspace(lonlim[0],lonlim[1],nlon)
             [LATM,LONM] = sp.meshgrid(latvec,lonvec)
-    
+
             newcoords = sp.column_stack((LATM.flatten(),LONM.flatten(),150.*sp.ones(LONM.size)))
             allsky_data.interpolate(newcoords,'WGS84',method='linear',twodinterp=True)
             allsky_data.write_h5(interpsavedfile)
@@ -114,7 +123,7 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
                 allsky_data.timereduce(timelim)
             allskytime=allsky_data.times[:,0]
 
-    
+
     #%% make lists for plotting
     tectime = sp.arange(TECtime[0],TECtime[1],60.*tint)
     nptimes= len(tectime)
@@ -134,11 +143,11 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
                 if len(itas)==0:
                     continue
                 itas = [itas[-1]]
-    
+
             for k in range(len(TEClist)):
                 Geoone=TEClist[k];
                 timevec = Geoone.times[:,0];
-    
+
                 itgps = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
                 if len(itgps)>0:
                     tlistemp=False
@@ -158,11 +167,11 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
             tlistemp=True
             itback=tectime[itasn]
             itfor = tectime[itasn+1]
-                
+
             for k in range(len(TEClist)):
                 Geoone=TEClist[k];
                 timevec = Geoone.times[:,0];
-    
+
                 itgps = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
                 if len(itgps)>0:
                     tlistemp=False
@@ -172,11 +181,11 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
             gpslist.append(techlist)
             tlistkeep[itasn]=True
         plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig,latlim2,lonlim2)
-    elif isallsky:            
+    elif isallsky:
         plotopticsonly(allsky_data,plotdir,m,ax,fig,latlim2,lonlim2)
-    
+
     plt.close(fig)
-    
+
 def plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig,latlim,lonlim):
     """ Makes a set of plots when only gps data is avalible."""
     maxplot = len(gpslist)
@@ -197,11 +206,11 @@ def plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig,latlim,lonlim):
                   ax=ax,title='',cbar=True,err=.1,m=m)
             gpsmin = sp.minimum(igps.times[igpslist,0].min(),gpsmin)
             gpsmax = sp.maximum(igps.times[igpslist,0].max(),gpsmax)
-            
+
             gpshands.append(sctter)
         scatercb.set_label('vTEC in TECu')
         #change he z order
-        
+
         print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
         plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'GPSonly.png'))
         plotnum+=1
@@ -219,20 +228,20 @@ def plotopticsonly(allsky_data,plotdir,m,ax,fig,latlim,lonlim):
     for iop in range(len(optictimes)):
         (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,optbnds,title='',
                             time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=True,m=m)
-                            
+
         slice3.set_norm(colors.PowerNorm(gamma=0.6,vmin=optbnds[0],vmax=optbnds[1]))
         if firstbar:
             firstbar=False
             cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
             cbaras.set_label('All Sky Scale')
-        
+
         plt.title(insertinfo('All Sky $tmdy $thmsehms',posix=allsky_data.times[iop,0],posixend=allsky_data.times[iop,1]))
         print('Ploting {0} of {1} plots'.format(plotnum,maxplot))
         plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASonly.png'))
 
         plotnum+=1
         slice3.remove()
-    
+
 def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig,latlim,lonlim):
     """ Make a set of plots when given both all sky ad GPS are given.
         Inputs
@@ -271,7 +280,7 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig,latli
             (slice3,cbar3) = slice2DGD(allsky_data,'alt',150,optbnds,title='',
                                 time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
             slice3.set_norm(colors.PowerNorm(gamma=0.6,vmin=optbnds[0],vmax=optbnds[1]))
-           
+
             if firstbar:
                 firstbar=False
                 cbaras = plt.colorbar(slice3,ax=ax,orientation='horizontal')
@@ -288,22 +297,22 @@ def plotgpswoptics(allsky_data,TEClist,allskylist,gpslist,plotdir,m,ax,fig,latli
 
 
 def plottecvstime(TECGD,satnum,fig,ax):
-    
+
     keep = TECGD.data['satnum']==satnum
     times = TECGD.times[:,0][keep]
     vtec = TECGD.data['vTEC'][keep]
     dts = map(datetime.utcfromtimestamp, times)
     dtfmt = DateFormatter('%H:%M:%S')
-    
+
     lines = ax.plot(dts,vtec)
-    
+
     ax.xaxis.set_major_locator(HourLocator())
     ax.xaxis.set_major_formatter(dtfmt)
     ax.set_xlabel('Time')
     ax.set_ylabel('vTEC')
     ax.set_title('Data From Sat {0:d}'.format(satnum))
     return lines
-    
+
 def getSRIhdf5(filename,times,pnheights,xycoords,newcordname,vbounds,pltdir =None):
     """ Plots a set of ISR data in SRI's data format."""
     paramstr = ['Ne','Ti','Te']
@@ -371,17 +380,17 @@ def getSRIhdf5(filename,times,pnheights,xycoords,newcordname,vbounds,pltdir =Non
 
 if __name__== '__main__':
     argv = sys.argv[1:]
-    outstr = ''' 
+    outstr = '''
              Usage: plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>, -d <date>, -b <begining time>, -e <endtime>, -p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>
 
-             or 
-             
+             or
+
              python plotdata.py -h
-             
-             This script will run Mahali Plotting software. The user needs to 
-             specify the locations of the different types of data and the time 
-             limits if they don't want all of the data processed. 
-                
+
+             This script will run Mahali Plotting software. The user needs to
+             specify the locations of the different types of data and the time
+             limits if they don't want all of the data processed.
+
             Optional arguments
             -a The allsky data directory.
             -w The wavelength of the allsky data.
@@ -395,7 +404,7 @@ if __name__== '__main__':
             -r If a y follows this then the raw radar data will be remade. If
                 this is not used the radar data will only be made if it does
                 not exist in the file first.
-            
+
             '''
 
 
@@ -408,13 +417,13 @@ if __name__== '__main__':
     remakealldata = False
     allskydir=None
     ionofdir=None
-   
+
     wl='558'
     timelist=[None]*3
-    
+
     latlim2 = [45.,75.]
-    lonlim2 = [-175.,-125.]    
-    
+    lonlim2 = [-175.,-125.]
+
     latlist=[]
     lonlist=[]
     for opt, arg in opts:
@@ -445,12 +454,12 @@ if __name__== '__main__':
             latlist.append(float(arg))
         elif opt in ('-o',"--lon"):
             lonlist.append(float(arg))
-            
+
     if len(latlist)>1:
         minlat=min(latlist)
         maxlat=max(latlist)
         latlist=[sp.maximum(minlat,min(latlim2)),sp.minimum(maxlat,max(latlim2))]
-        
+
     if len(lonlist)>1:
         minlon=min(lonlist)
         maxlon=max(lonlist)
@@ -465,12 +474,15 @@ if __name__== '__main__':
         dt2ts = (dt2 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
         timelim=[dt1ts,dt2ts]
 #    plotdir = os.path.expanduser('~/Documents/python/mahali/plots10172015')
-    if not os.path.isdir(plotdir):
-        os.mkdir(plotdir)
+    try:
+        os.makedirs(plotdir)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST and os.path.isdir(plotdir):
+            pass
 #    allskydir = os.path.expanduser('~/DATA/Mahali/allsky')
 #    ionofdir = os.path.expanduser('~/DATA/Mahali/GPS_Processed_IonoFiles/site_280_2015')
     cmdrun=True
     if cmdrun:
         matplotlib.use('Agg') # for use where you're running on a command line
-    
+
     main(allskydir,ionofdir,plotdir,latlist,lonlist,wl = wl,tint=tint,reinterp=remakealldata,timelim=timelim)
