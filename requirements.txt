@@ -1,0 +1,9 @@
+numpy
+scipy
+pytables
+h5py
+matplotlib
+basemap
+xarray
+pandas
+astropy
