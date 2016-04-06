@@ -2,7 +2,7 @@
 """
 
 """
-import os, glob,getopt,sys,errno
+import os, glob,errno
 import scipy as sp
 import pytz
 from datetime import datetime
@@ -19,8 +19,10 @@ from GeoData.plotting import scatterGD, slice2DGD,insertinfo
 from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 
+debugnfile = 10 #None to disable
 
-def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinterp=False,timelim=None):
+
+def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timelim=None):
     """ This is the main function for plot data. This function will determine what is to be plotted
     and call all of the spatial and time regestration programs from GeoData.
     Inputs
@@ -29,13 +31,13 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
         ionofdir - The directory that holds all of the ionofiles. If a None is
             passed then a the allsky is not plotted.
         plotdir - The directory where the plots are stored.
-        wl - The wavelength of the allsky light in a string.
+        wl - The wavelength of the allsky light
         tint - The number of minutes the GPS data is plotted over. Default is 5.
         reinterp - A bool that determines if the GeoData files for the optical data
             should be remade.
         timelim - A list that shows the time boundaries in posix."""
-#    latlim2 = [45.,75.]
-#    lonlim2 = [-185.,-125.]
+
+    wl = str(int(wl))
 #%% Make map
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_axes([0.1,0.1,0.8,0.8])
@@ -45,6 +47,7 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
     if not lonlim2:
         lonlim2=[-179.,179.]
 
+    print('creating map underlay')
     m = Basemap(projection='merc',
             lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),
             lat_ts=sp.mean(latlim2),
@@ -58,8 +61,8 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
 #    m.drawcountries()
     shp_info = m.readshapefile('st99_d00','states',drawbounds=True)
 
-    merstep = sp.round_((lonlim2[1]-lonlim2[0])/5.)
-    parstep = sp.round_((latlim2[1]-latlim2[0])/5.)
+    merstep = int(round((lonlim2[1]-lonlim2[0])/5.))
+    parstep = int(round((latlim2[1]-latlim2[0])/5.))
     meridians=sp.arange(lonlim2[0],lonlim2[1],merstep)
     parallels = sp.arange(latlim2[0],latlim2[1],parstep)
     parhand=m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
@@ -67,13 +70,16 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
     plt.hold(True)
     isallsky=False
     isgps = False
-    if ionofdir is not  None:
+    TECtime = None
+
+    if ionofdir is not None:
         isgps=True
         TEClist = []
         TECfiles = glob.glob(os.path.join(ionofdir,'*.iono'))
-        TECtime = [sp.Inf,-sp.Inf];
-    #    Geolatlim = [sp.Inf,-sp.Inf];
-    #    Geolonlim = [sp.Inf,-sp.Inf];
+        if not TECfiles:
+            raise IOError('found no TEC files in {}'.format(ionofdir))
+        print('found {} .iono files in {}'.format(len(TECfiles),ionofdir))
+
         for ifile in TECfiles:
             TECGD = GeoData(readIonofiles,(ifile,))
             if timelim is not None:
@@ -82,9 +88,12 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
             if len(TECGD.times)==0:
                 continue
             TEClist.append(TECGD)
-            TECtime[0] = min(min(TECGD.times[:,0]),TECtime[0])
-            TECtime[1] = max(max(TECGD.times[:,0]),TECtime[1])
 
+            if TECtime is not None:
+                TECtime[0] = min(TECGD.times[:,0].min(), TECtime[0])
+                TECtime[1] = max(TECGD.times[:,0].max(), TECtime[1])
+            else:
+                TECtime = [TECGD.times[:,0].min(), TECGD.times[:,0].max()]
     if allskydir is not None:
         isallsky=True
 
@@ -95,13 +104,17 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
 
             flist558 = glob.glob(os.path.join(allskydir,wlstr))
             if not flist558:
-                raise ValueError('no allsky files found in {}'.format(allskydir))
+                raise IOError('no allsky files found in {}'.format(allskydir))
+            print(('{} allsky files found in {}'.format(len(flist558),allskydir)))
+            if debugnfile:
+                flist558=flist558[:debugnfile] #"if" could be eliminated, just for clarity
+
             allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla))
             if timelim is not None:
                 allsky_data.timereduce(timelim)
                 # reduce the size of the allskydata
             allskytime = allsky_data.times[:,0]
-            allsky_data=allsky_data.timeslice(sp.where(sp.logical_and(allskytime>=TECtime[0],allskytime<TECtime[1] ))[0])
+            allsky_data=allsky_data.timeslice(sp.where((allskytime>=TECtime[0]) & (allskytime<TECtime[1]))[0])
             allskytime=allsky_data.times[:,0]
 
             xcoords = allsky_data.__changecoords__('WGS84')
@@ -114,8 +127,9 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
             lonvec = sp.linspace(lonlim[0],lonlim[1],nlon)
             [LATM,LONM] = sp.meshgrid(latvec,lonvec)
 
-            newcoords = sp.column_stack((LATM.flatten(),LONM.flatten(),150.*sp.ones(LONM.size)))
+            newcoords = sp.column_stack((LATM.ravel(),LONM.ravel(),150.*sp.ones(LONM.size)))
             allsky_data.interpolate(newcoords,'WGS84',method='linear',twodinterp=True)
+            print('writing {}'.format(interpsavedfile))
             allsky_data.write_h5(interpsavedfile)
         else:
             allsky_data = GeoData.read_h5(interpsavedfile)
@@ -126,7 +140,7 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
 
     #%% make lists for plotting
     tectime = sp.arange(TECtime[0],TECtime[1],60.*tint)
-    nptimes= len(tectime)
+    nptimes= tectime.size
 
     if isallsky and isgps:
         allskylist = []
@@ -137,7 +151,7 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
             tlistemp=True
             itback=tectime[itasn]
             itfor = tectime[itasn+1]
-            itas = sp.where(sp.logical_and(allskytime>=itback, allskytime<itfor))[0]
+            itas = sp.where((allskytime>=itback) &  (allskytime<itfor))[0]
             if len(itas)==0:
                 itas = sp.where(allskytime<=itback)[0]
                 if len(itas)==0:
@@ -148,7 +162,7 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
                 Geoone=TEClist[k];
                 timevec = Geoone.times[:,0];
 
-                itgps = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
+                itgps = sp.where((timevec>=itback) & (timevec<itfor))[0]
                 if len(itgps)>0:
                     tlistemp=False
                 techlist.append(itgps)
@@ -172,7 +186,7 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl = str(558),tint=5,reinter
                 Geoone=TEClist[k];
                 timevec = Geoone.times[:,0];
 
-                itgps = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
+                itgps = sp.where((timevec>=itback)& (timevec<itfor))[0]
                 if len(itgps)>0:
                     tlistemp=False
                 techlist.append(itgps)
@@ -371,88 +385,45 @@ def getSRIhdf5(filename,times,pnheights,xycoords,newcordname,vbounds,pltdir =Non
         plt.subplots_adjust(top=0.85)
         if not pltdir is None:
             fname=os.path.join(pltdir,fname)
-        print 'Plotting '+fname
+        print('saving {}'.format(fname))
         plt.savefig(fname)
         plt.close(fig)
 
 
 
 if __name__== '__main__':
-    argv = sys.argv[1:]
-    outstr = '''
-             Usage: plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>, -d <date>, -b <begining time>, -e <endtime>, -p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>
-
-             or
-
-             python plotdata.py -h
-
+    from argparse import ArgumentParser
+    descr = '''
              This script will run Mahali Plotting software. The user needs to
              specify the locations of the different types of data and the time
              limits if they don't want all of the data processed.
-
-            Optional arguments
-            -a The allsky data directory.
-            -w The wavelength of the allsky data.
-            -i The directory that holds all of the TEC data in ionofile formats.
-            -t The time interval that the TEC data will be plotted over.
-            -d The date of the data.
-            -b The beginning of the time window that the data will be plotted over.
-            -e The ending of the time window that the data will be plotted over.
-            -l Latitude bounds, must put both in.
-            -o Longitude bound, must be both.
-            -r If a y follows this then the raw radar data will be remade. If
-                this is not used the radar data will only be made if it does
-                not exist in the file first.
-
             '''
+    p = ArgumentParser(description=descr)
+    p.add_argument('-i','--ifile',help='The directory that holds all of the TEC data in ionofile formats.')
+    p.add_argument('-w','--wlen',help='The wavelength of the allsky data. [nm]',type=float,default=558.)
+    p.add_argument("-a", "--asky",help='The allsky data directory.')
+    p.add_argument("-t", "--tint",help='The time interval that the TEC data will be plotted over.',type=float,default=5.)
+    p.add_argument("-p", "--pdir",help='plot output directory')
+    p.add_argument("-d", "--date",help='The date of the data')
+    p.add_argument("-b","--begtime",help='The beginning of the time window that the data will be plotted over.')
+    p.add_argument("-e","--endtime",help='The ending of the time window that the data will be plotted over.')
+    p.add_argument('-r', "--re",help='If a y follows this then the raw radar data will be remade. If this is not used the radar data will only be made if it does not exist in the file first',action='store_true')
+    p.add_argument('-l','--lat',help='Latitude bounds [lower,upper]',nargs=2,type=float)
+    p.add_argument('-o',"--lon",help='Longitude bounds [left,right]',nargs=2,type=float)
+    p = p.parse_args()
 
+    ionofdir = os.path.expanduser(p.ifile)
+    allskydir=os.path.expanduser(p.asky)
+    tint = p.tint
+    plotdir = os.path.expanduser(p.pdir)
 
-    try:
-        opts, args = getopt.gnu_getopt(argv,"ha:w:i:t:r:p:d:b:e:l:o:")
-    except getopt.GetoptError:
-        print(outstr)
-        sys.exit(2)
+    timelist = [p.date, p.begtime, p.endtime]
 
-    remakealldata = False
-    allskydir=None
-    ionofdir=None
-
-    wl='558'
-    timelist=[None]*3
-
-    latlim2 = [45.,75.]
+    latlim2 = [45., 75.]
     lonlim2 = [-175.,-125.]
 
-    latlist=[]
-    lonlist=[]
-    for opt, arg in opts:
-        if opt == '-h':
-            print(outstr)
-            sys.exit()
-        elif opt in ("-i", "--ifile"):
-            ionofdir = os.path.expanduser(arg)
-
-        elif opt in ("-w", "--wlen"):
-            wl = arg
-        elif opt in ("-a", "--asky"):
-            allskydir=os.path.expanduser(arg)
-        elif opt in ("-t", "--tin"):
-            tint=float(arg)
-        elif opt in ("-p", "--pdir"):
-            plotdir=os.path.expanduser(arg)
-        elif opt in ("-d","--date"):
-            timelist[0]=arg
-        elif opt in ("-b","--begtime"):
-            timelist[1]=arg
-        elif opt in ("-e","--endtime"):
-            timelist[2]=arg
-        elif opt in ('-r', "--re"):
-            if arg.lower() == 'y':
-                remakealldata = True
-        elif opt in ('-l', "--lat"):
-            latlist.append(float(arg))
-        elif opt in ('-o',"--lon"):
-            lonlist.append(float(arg))
+    latlist=p.lat
+    lonlist=p.lon
 
     if len(latlist)>1:
         minlat=min(latlist)
@@ -484,4 +455,4 @@ if __name__== '__main__':
     if cmdrun:
         matplotlib.use('Agg') # for use where you're running on a command line
 
-    main(allskydir,ionofdir,plotdir,latlist,lonlist,wl = wl,tint=tint,reinterp=remakealldata,timelim=timelim)
+    main(allskydir,ionofdir,plotdir,latlist,lonlist,wl = p.wlen,tint=tint,reinterp=p.re,timelim=timelim)
