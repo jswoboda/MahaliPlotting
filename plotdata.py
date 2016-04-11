@@ -106,8 +106,6 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timel
             if not flist558:
                 raise IOError('no allsky files found in {}'.format(allskydir))
             print(('{} allsky files found in {}'.format(len(flist558),allskydir)))
-            if debugnfile:
-                flist558=flist558[:debugnfile] #"if" could be eliminated, just for clarity
 
             allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla))
             if timelim is not None:
