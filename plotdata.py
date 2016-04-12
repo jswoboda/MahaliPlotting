@@ -22,7 +22,7 @@ from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 debugnfile = 10 #None to disable
 
 
-def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timelim=None):
+def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timelim=[-sp.infty,sp.infty]):
     """ This is the main function for plot data. This function will determine what is to be plotted
     and call all of the spatial and time regestration programs from GeoData.
     Inputs
@@ -107,7 +107,7 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timel
                 raise IOError('no allsky files found in {}'.format(allskydir))
             print(('{} allsky files found in {}'.format(len(flist558),allskydir)))
 
-            allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla))
+            allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla,timelim))
             if timelim is not None:
                 allsky_data.timereduce(timelim)
                 # reduce the size of the allskydata
