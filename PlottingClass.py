@@ -81,7 +81,6 @@ class PlotClass(object):
         timelim=self.params['timebounds']
         TEClist = []
         TECfiles = glob.glob(os.path.join(GPSloc,'*.iono'))
-        TECtime = [sp.Inf,-sp.Inf];
 
         for ifile in TECfiles:
             TECGD = GeoData(readIonofiles,(ifile,))
@@ -91,8 +90,7 @@ class PlotClass(object):
             if len(TECGD.times)==0:
                 continue
             TEClist.append(TECGD)
-            TECtime[0] = min(min(TECGD.times[:,0]),TECtime[0])
-            TECtime[1] = max(max(TECGD.times[:,0]),TECtime[1])
+            
             
         self.GDGPS = TEClist
         print('Finished Reading in GPS Data')
@@ -567,6 +565,9 @@ def readini(inifile):
     return params
 
 def str2posix(timelist):
+    if len(timelist)==3:
+        timelist.insert(2,timelist[0])
+        
     (dt1,dt2) = parser.parse(timelist[0]+ ' '+timelist[1]),parser.parse(timelist[2]+ ' '+timelist[3])
     dt1 =dt1.replace(tzinfo=pytz.utc)
     dt2 = dt2.replace(tzinfo=pytz.utc)
