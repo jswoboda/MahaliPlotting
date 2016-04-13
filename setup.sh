@@ -7,5 +7,10 @@ py2path=$(dirname $(which python2))
 echo $py2path
 
 ${py2path}/conda install --file requirements.txt
+(
+cd ..
 
-${py2path}/pip install https://github.com/jswoboda/GeoDataPython/tarball/master#egg=GeoDataPython
+git clone https://github.com/jswoboda/GeoDataPython
+cd GeoDataPython
+python2 setup.py develop
+)
