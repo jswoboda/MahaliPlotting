@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 from PlottingClass import str2posix
-from matplotlib.dates import YearLocator, MonthLocator, DateFormatter,MinuteLocator, HourLocator
+from matplotlib.dates import YearLocator, MonthLocator, DateFormatter,MinuteLocator, HourLocator,MinuteLocator
 
 def PlotTECdiff(gpsloc,timelist,satnum,sublist,pname='mahdiff.png',tectype = 'TEC'):
     """ This will plot the differences between two gps sites. The code filters
@@ -61,6 +61,8 @@ def PlotTECdiff(gpsloc,timelist,satnum,sublist,pname='mahdiff.png',tectype = 'TE
     dtfmt = DateFormatter('%H:%M:%S')
     axmat.xaxis.set_major_locator(HourLocator())
     axmat.xaxis.set_major_formatter(dtfmt)
+    axmat.xaxis.set_minor_locator(MinuteLocator(interval=15))
+
     axmat.set_xlabel('Time UT')
     axmat.set_ylabel(tectype)
     plt.savefig(pname)
@@ -77,14 +79,15 @@ def plottecvstime(TECGD,satnum,fig,ax):
     """
     keep = TECGD.data['satnum']==satnum
     times = TECGD.times[:,0][keep]
-    vtec = TECGD.data['TEC'][keep]
+    vtec = TECGD.data['vTEC'][keep]
     dts = map(datetime.datetime.utcfromtimestamp, times)
     dtfmt = DateFormatter('%H:%M:%S')
     
     lines = ax.plot(dts,vtec)
     
-    ax.xaxis.set_major_locator(HourLocator())
+    ax.xaxis.set_major_locator(MinuteLocator(byminute = [0,15,30,45]))#interval=15))
     ax.xaxis.set_major_formatter(dtfmt)
+
     ax.set_ylabel('TEC')
     ax.set_ylim([-10.,30.])
     ax.set_title('Data From Sat {0:d}'.format(satnum))

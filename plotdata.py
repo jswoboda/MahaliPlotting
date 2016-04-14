@@ -21,7 +21,7 @@ from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 
 debugnfile = 10 #None to disable
 
-def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timelim=None):
+def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timelim=[-sp.infty,sp.infty]):
     """ This is the main function for plot data. This function will determine what is to be plotted
     and call all of the spatial and time regestration programs from GeoData.
     Inputs
