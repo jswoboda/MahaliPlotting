@@ -21,7 +21,6 @@ from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 
 debugnfile = 10 #None to disable
 
-
 def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timelim=None):
     """ This is the main function for plot data. This function will determine what is to be plotted
     and call all of the spatial and time regestration programs from GeoData.
@@ -39,35 +38,8 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timel
 
     wl = str(int(wl))
 #%% Make map
-    fig = plt.figure(figsize=(8,8))
-    ax = fig.add_axes([0.1,0.1,0.8,0.8])
-    # create polar stereographic Basemap instance.
-    if not latlim2:
-        latlim2=[-89.,89.]
-    if not lonlim2:
-        lonlim2=[-179.,179.]
+    fig,ax,m=setupmap(latlim2,lonlim2)
 
-    print('creating map underlay')
-    m = Basemap(projection='merc',
-            lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),
-            lat_ts=sp.mean(latlim2),
-            llcrnrlat=latlim2[0],urcrnrlat=latlim2[1],
-            llcrnrlon=lonlim2[0],urcrnrlon=lonlim2[1],
-            rsphere=6371200.,resolution='i',ax=ax)
-
-    # draw coastlines, state and country boundaries, edge of map.
-    #m.drawcoastlines()
-#    m.drawstates()
-#    m.drawcountries()
-    shp_info = m.readshapefile('st99_d00','states',drawbounds=True)
-
-    merstep = int(round((lonlim2[1]-lonlim2[0])/5.))
-    parstep = int(round((latlim2[1]-latlim2[0])/5.))
-    meridians=sp.arange(lonlim2[0],lonlim2[1],merstep)
-    parallels = sp.arange(latlim2[0],latlim2[1],parstep)
-    parhand=m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
-    mrdhand = m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
-    plt.hold(True)
     isallsky=False
     isgps = False
     TECtime = None
@@ -80,7 +52,8 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timel
             raise IOError('found no TEC files in {}'.format(ionofdir))
         print('found {} .iono files in {}'.format(len(TECfiles),ionofdir))
 
-        for ifile in TECfiles:
+        for i,ifile in enumerate(TECfiles):
+            print('processing {}/{} {}  '.format(i+1,len(TECfiles),ifile))
             TECGD = GeoData(readIonofiles,(ifile,))
             if timelim is not None:
                 TECGD.timereduce(timelim)
@@ -100,14 +73,15 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timel
         wlstr ='*_0'+wl+'_*.FITS'
         interpsavedfile = os.path.join(allskydir,'interp'+wl+'.h5')
         if reinterp or (not os.path.isfile(interpsavedfile)):
-            pfalla = sp.array([65.136667,-147.447222,689.])
-
             flist558 = glob.glob(os.path.join(allskydir,wlstr))
             if not flist558:
                 raise IOError('no allsky files found in {}'.format(allskydir))
             print(('{} allsky files found in {}'.format(len(flist558),allskydir)))
 
-            allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla))
+            allsky_data = GeoData(readAllskyFITS,
+                                  (flist558,
+                                   ('PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS'),
+                                   150.))
             if timelim is not None:
                 allsky_data.timereduce(timelim)
                 # reduce the size of the allskydata
@@ -197,6 +171,44 @@ def main(allskydir,ionofdir,plotdir,latlim2,lonlim2,wl,tint,reinterp=False,timel
         plotopticsonly(allsky_data,plotdir,m,ax,fig,latlim2,lonlim2)
 
     plt.close(fig)
+
+
+def setupmap(latlim2,lonlim2):
+
+    fig = plt.figure(figsize=(8,8))
+    ax = fig.add_axes([0.1,0.1,0.8,0.8])
+    # create polar stereographic Basemap instance.
+    if not latlim2:
+        latlim2=[-89.,89.]
+    if not lonlim2:
+        lonlim2=[-179.,179.]
+
+    print('creating map underlay')
+    m = Basemap(projection='merc',
+            lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),
+            lat_ts=sp.mean(latlim2),
+            llcrnrlat=latlim2[0],urcrnrlat=latlim2[1],
+            llcrnrlon=lonlim2[0],urcrnrlon=lonlim2[1],
+            rsphere=6371200.,resolution='i',ax=ax)
+
+    # draw coastlines, state and country boundaries, edge of map.
+    #m.drawcoastlines()
+#    m.drawstates()
+#    m.drawcountries()
+    #shp_info =
+    m.readshapefile('st99_d00','states',drawbounds=True)
+
+    merstep = int(round((lonlim2[1]-lonlim2[0])/5.))
+    parstep = int(round((latlim2[1]-latlim2[0])/5.))
+    meridians=sp.arange(lonlim2[0],lonlim2[1],merstep)
+    parallels = sp.arange(latlim2[0],latlim2[1],parstep)
+    #parhand=
+    m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
+    #mrdhand =
+    m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
+    plt.hold(True)
+
+    return fig,ax,m
 
 def plotgpsonly(TEClist,gpslist,plotdir,m,ax,fig,latlim,lonlim):
     """ Makes a set of plots when only gps data is avalible."""
