@@ -580,54 +580,43 @@ def posix2str(posixlist):
     data = [datetime.strftime(dts[0],'%m/%d/%Y %H:%M:%S'), datetime.strftime(dts[1],'%m/%d/%Y %H:%M:%S')]
     return data
 if __name__== '__main__':
-    argv = sys.argv[1:]
-    outstr = ''' 
-             Usage: plotdata.py -a <all skypath> -w <wavelength>, -i <ionofile dir>, -t <time interval>, -d <date>, -b <begining time>, -e <endtime>, -p <plotdirectory> -r <type y to reinterpolate all sky data> -s <SRI File>
+    
+    from argparse import ArgumentParser
+    descr = '''
+             This script will run Mahali Plotting software. The user needs to
+             specify the locations of the different types of data and the time
+             limits if they don't want all of the data processed. This specific
+             module runs everything in a class struture so it can be used with
+             other modules easier.
+            '''
+    p = ArgumentParser(description=descr)
+    p.add_argument('-i','--ifile',help='The directory that holds all of the TEC data in ionofile formats.',default=None)
+    p.add_argument("-a", "--asky",help='The allsky data directory.',default=None)
+    p.add_argument("-p", "--pdir",help='plot output directory',default=os.getcwd())
 
-             or 
-             
-             python plotdata.py -h
-             
-             This script will run Mahali Plotting software. The user needs to 
-             specify the locations of the different types of data and the time 
-             limits if they don't want all of the data processed. 
-                
-            Optional arguments
-            -c Config file name.
-            -i The directory that holds all of the TEC data in ionofile formats.
-            -a The allsky data directory or GeoData file.
-            -r The ISR data file.
-            
-             Example:
-             python PlottingClass.py'''
-
-
-    try:
-        opts, args = getopt.gnu_getopt(argv,"ha:i:r:c:")
-    except getopt.GetoptError:
-        print(outstr)
-        sys.exit(2)
-
-    gpsloc=None
-    ASloc=None
-    ISRloc=None
-    plotdir=os.getcwd()
-    for opt, arg in opts:
-        if opt == '-h':
-            print(outstr)
-            sys.exit()
-        elif opt in ("-i", "--ifile"):
-            gpsloc = os.path.expanduser(arg)   
-        elif opt in ("-a", "--asky"):
-            ASloc=os.path.expanduser(arg)
-        elif opt in ("-r", "--radar"):
-            ISRloc=os.path.expanduser(arg)
-        elif opt in ("-c", "--config"):
-            inifile = os.path.expanduser(arg) 
-        elif opt in ('-p','--pdir'):
-            plotdir=os.path.expanduser(arg)
-        (fig,axmat) = plt.subplots(1,1,figsize=(16,12),facecolor='w')
-        PC = PlotClass(inifile,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
-        m=PC.plotmap(fig,axmat)
-        PC.plotalldata(plotdir,m,axmat,fig)
-        plt.close(fig)
+    p.add_argument('-r', "--radar",help='Radar hdf5 file',default=None)#action='store_true')
+ 
+    p.add_argument('-c',"--config",help='Config file name.')
+    p = p.parse_args()
+    
+    if p.ifile is None:
+        gpsloc=p.ifile
+    else:
+        gpsloc=os.path.expanduser(p.ifile)
+    if p.asky is None:
+        ASloc=p.asky
+    else:
+        ASloc=os.path.expanduser(p.asky)
+    if p.radar is None:
+        ISRloc=p.radar
+    else:
+        ISRloc=os.path.expanduser(p.radar)
+   
+    plotdir=os.path.expanduser(p.pdir)
+    inifile = os.path.expanduser(p.config)
+    
+    (fig,axmat) = plt.subplots(1,1,figsize=(16,12),facecolor='w')
+    PC = PlotClass(inifile,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
+    m=PC.plotmap(fig,axmat)
+    PC.plotalldata(plotdir,m,axmat,fig)
+    plt.close(fig)
