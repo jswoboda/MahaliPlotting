@@ -398,6 +398,9 @@ class PlotClass(object):
                 timenum - The of GeoData objects derived from the ionofiles.
                 icase - A list of list which determines which allsky times are used.
                 cbarax - The list of color bar axes.
+            Outputs
+                allhands - The list handles of the plotted data. 
+                cbarax - A list of 
         """
         
 
@@ -487,7 +490,39 @@ class PlotClass(object):
             allhands.append(plth)
         ax.set_title('\n'.join(titlelist) )
         return allhands,cbarax
-            
+    def plotgpsnames(self,m,ax,fig,allhands,timenum=0):
+        """ This will plot the names of the GPS recievers next to the pierce points.
+            Inputs
+                m - The map handle that is used to plot everything.
+                fig - The figure handle for the plots.
+                ax - The axes handle that the map will be plotted over.
+                allhands - The list handles of the plotted data. 
+                timenum - The of GeoData objects derived from the ionofiles.                
+            Outputs
+                allhands - The list handles of the plotted data. 
+            """
+        if self.GDGPS is None:
+            return allhands
+        xoffset = 0.022*(m.xmax-m.xmin)
+        yoffset = 0.022*(m.ymax-m.ymin)
+        namehands = []
+        for igpsnum, (igps,igpslist) in enumerate(zip(self.GDGPS,self.Regdict['TEC'][timenum])):
+           # check if there's anything to plot
+           if len(igpslist)==0:
+               continue
+           locs = igps.dataloc[igpslist]
+           x, y = m(locs[:,1], locs[:,0])
+           
+           keepboth =  x>m.xmin&x<m.xmax&y>m.ymin&y<m.ymax
+           if keepboth.sum()==0:
+               continue
+           [xloc,yloc] = [x[keepboth][0],y[keepboth][0]]
+           namehands.append(plt.text(xloc+xoffset,yloc+yoffset,self.GPSNames[igpsnum],fontsize=14,fontweight='bold',
+                    color='r'))
+        allhands.append(namehands)
+        return allhands
+        
+        
     def writeiniclass(self,fname):
         writeini(self.params,fname)
 #%% Write out file
