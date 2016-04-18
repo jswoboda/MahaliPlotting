@@ -22,7 +22,7 @@ from GeoData.plotting import scatterGD, slice2DGD,insertinfo, contourGD
 from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
 from copy import copy
-INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','ISRLatnum','ISRLonnum','wl']
+INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','ISRLatnum','ISRLonnum','wl','TextList']
 
 class PlotClass(object):
     """ This class will handle all of the reading , registration and plotting of data
@@ -381,6 +381,9 @@ class PlotClass(object):
                 print('Ploting {0} of {1} plots'.format(plotnum,Nplot))
                 plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+paramstrs[icase]+'ASwGPS.png'))
                 
+                if itime in self.params['TextList']:
+                    hands = self.plotgpsnames(m,ax,fig,hands,timenum=itime)
+                    plt.savefig(os.path.join(plotdir,'wloctext' + fmstr.format(plotnum)+paramstrs[icase]+'ASwGPS.png'))
                 for i in hands[0]:
                     i.remove()
                 for i in hands[0:]:
@@ -572,7 +575,13 @@ def writeini(params,fname):
     cfgfile.close()
     #%% Read in file        
 def readini(inifile):
-
+    """ This function will read in data from a configureation file.
+        Inputs
+            inifile- The name of the configuration file.
+        Outputs 
+            params - A dictionary with keys from INIOPTIONS that holds all of
+                the plotting parameters.
+    """
     config = ConfigParser.ConfigParser()
     config.read(inifile)
     params={i:None for i in INIOPTIONS}
@@ -601,6 +610,12 @@ def readini(inifile):
     if not params['timebounds']is None:
         timelist = params['timebounds']
         params['timebounds']=str2posix(timelist)
+    # which times will have names
+    if params['TextList'] is None:
+        params['TextList']=[]
+    
+        
+        
     # change param height to a list of lists 
     if not params['paramheight'] is None:
         l1 = params['paramheight'][::2]
@@ -618,6 +633,14 @@ def readini(inifile):
     return params
 
 def str2posix(timelist):
+    """ This will take a list of strings with the date along with a start and
+        end time and make a list with the posix times.
+        Inputs
+            timelist - A list of strings with the data followed by two times. 
+            The date for the second time can also be used, it will be at index
+            2 and the second time will be at index 3.
+        Outputs
+            dtts - A list of posix times from the original inputs"""
     if len(timelist)==3:
         timelist.insert(2,timelist[0])
         
