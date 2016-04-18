@@ -37,6 +37,8 @@ class PlotClass(object):
         GDISR - A GeodData object for the ISR data. The default value is None.
         GDGPS - A GeodData object for the GPS data. The default value is None.
         GDAS - A GeodData object for the AllSky data. The default value is None.
+        numGD - The number of Sensor classes avalible.
+        GPSNames - The names of the GPS receivers.
         Regdict - A dictionary used to order all of the data. The keys are 
             TEC, AS, Time ISR. """
     def __init__(self,inifile,GPSloc=None,ASloc=None,ISRloc=None):
@@ -50,19 +52,18 @@ class PlotClass(object):
                 thats been pre interpolated."""
         self.inifile = inifile
         self.params = readini(inifile)
+        # GeoData objects
         self.GDISR = None
         self.GDGPS = None
+        self.GPSNames = None
         self.GDAS = None
         self.numGD = 0
-        #GeoData objects
+        # Read in GeoData objects
         self.GPSRead(GPSloc)
         self.ASRead(ASloc)
         self.ISRRead(ISRloc)
-        
-        
-    
+        # Time Register everyting
         self.RegisterData()
-        
     
   #%% Read in data      
     def GPSRead(self,GPSloc):
@@ -91,7 +92,8 @@ class PlotClass(object):
                 continue
             TEClist.append(TECGD)
             
-            
+        # Determine the reciver names
+        self.GPSNames = [os.path.splitext(os.path.split(i)[-1])[0].split('-')[0] for i in TECfiles]
         self.GDGPS = TEClist
         print('Finished Reading in GPS Data')
         
@@ -319,7 +321,14 @@ class PlotClass(object):
         self.Regdict=regdict
 #%% Plotting
     def plotmap(self,fig,ax):
-        
+        """ This function will plot the map of Alaska. The data will be plotted
+            over it and will use the basemap class to position everything.
+            Input
+                fig - The figure handle for the plots.
+                ax - The axes handle that the map will be plotted over.
+            Output
+                m - This is the handle for the basemap object.
+        """
         latlim2 = self.params['latbounds']
         lonlim2 = self.params['lonbounds']
         m = Basemap(projection='merc',lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),\
@@ -341,10 +350,17 @@ class PlotClass(object):
         plt.hold(True)
         return m
         
-    def plotalldata(self,plotdir,m,ax,fig,):
+    def plotalldata(self,plotdir,m,ax,fig):
         """ This method will plot all of the images from the time period specified.
-        The png files will be numbered and have the ISR parameter name in the title.
-        The user can easily manipulate the files using comand line."""
+            The png files will be numbered and have the ISR parameter name in 
+            the title. The user can easily manipulate the files using comand line.
+            Inputs 
+                plotdir - This is the directory that all of the plots will be saved 
+                    in.
+                m - The map object that will be used to orient the data.
+                fig - The figure handle for the plots.
+                ax - The axes handle that the map will be plotted over.
+        """
         
         timelist = self.regcell['Time']
         Nt = len(timelist)
@@ -377,9 +393,11 @@ class PlotClass(object):
             the desired ISR param.
             Inputs
                 m - The map handle that is used to plot everything.
-                                
+                fig - The figure handle for the plots.
+                ax - The axes handle that the map will be plotted over.
                 timenum - The of GeoData objects derived from the ionofiles.
                 icase - A list of list which determines which allsky times are used.
+                cbarax - The list of color bar axes.
         """
         
 
