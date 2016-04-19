@@ -442,12 +442,13 @@ class PlotClass(object):
            
            
            
-           cbcur+=1   
+             
            # If no gps data plots dont try to plot the color bar
            if len(gpshands)>0:
                scatercb = plt.colorbar(sctter,cax=cbarax[cbcur])
                
                scatercb.set_label('vTEC in TECu')
+           cbcur+=1 
            allhands[0]=gpshands
            titlelist.append( insertinfo('GPS $tmdy $thmsehms',posix=curwin[0],posixend=curwin[1]))
            #change he z order
@@ -524,9 +525,9 @@ class PlotClass(object):
            if len(igpslist)==0:
                continue
            locs = igps.dataloc[igpslist]
+           xwin,ywin = m(self.params['lonbounds'],self.params['latbounds'])
            x, y = m(locs[:,1], locs[:,0])
-           
-           keepboth =  (x>m.xmin)&(x<m.xmax)&(y>m.ymin)&(y<m.ymax)
+           keepboth =  (x>xwin[0])&(x<xwin[1])&(y>ywin[0])&(y<ywin[1])
            if keepboth.sum()==0:
                continue
            [xloc,yloc] = [x[keepboth][0],y[keepboth][0]]
