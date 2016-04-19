@@ -124,7 +124,7 @@ class PlotClass(object):
             flist558 = glob.glob(filestr)
             if len(flist558)==0:
                 return
-            allsky_data = GeoData(readAllskyFITS,(flist558,'PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS',150.,pfalla,timelim))
+            allsky_data = GeoData(readAllskyFITS,(flist558,('PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS'),150.,timelim))
             if timelim is not None:
                 allsky_data.timereduce(timelim)
 
@@ -362,7 +362,7 @@ class PlotClass(object):
                 ax - The axes handle that the map will be plotted over.
         """
         
-        timelist = self.regcell['Time']
+        timelist = self.Regdict['Time']
         Nt = len(timelist)
         strlen = int(sp.ceil(sp.log10(Nt))+1)
         fmstr = '{0:0>'+str(strlen)+'}_'
@@ -384,12 +384,20 @@ class PlotClass(object):
                 if itime in self.params['TextList']:
                     hands = self.plotgpsnames(m,ax,fig,hands,timenum=itime)
                     plt.savefig(os.path.join(plotdir,'wloctext' + fmstr.format(plotnum)+paramstrs[icase]+'ASwGPS.png'))
-                for i in hands[0]:
-                    i.remove()
-                for i in hands[0:]:
-                    i.remove()
+                
+                for ihand in hands:
+                    if hasattr(ihand, "__len__"):
+                        for ihand2 in ihand:
+                            ihand2.remove()
+                    elif hasattr(ihand,'collections'):
+                        for ihand2 in ihand.collections:
+                            ihand2.remove()
+                    else:
+                        ihand.remove()
                 plotnum+=1
-            
+        # write out ini file to record plot parameters
+        ininame = os.path.split(self.inifile)[-1]
+        writeini(self.params,os.path.join(plotdir,ininame))
             
     def plotsingle(self,m,ax,fig,timenum=0,icase=0,cbarax=[]):
         """ Make single plot given the desired time and number associated with
@@ -433,11 +441,13 @@ class PlotClass(object):
                gpshands.append(sctter)
            
            
-               
-           scatercb = plt.colorbar(sctter,cax=cbarax[cbcur])
-           cbcur+=1
            
-           scatercb.set_label('vTEC in TECu')
+           cbcur+=1   
+           # If no gps data plots dont try to plot the color bar
+           if len(gpshands)>0:
+               scatercb = plt.colorbar(sctter,cax=cbarax[cbcur])
+               
+               scatercb.set_label('vTEC in TECu')
            allhands[0]=gpshands
            titlelist.append( insertinfo('GPS $tmdy $thmsehms',posix=curwin[0],posixend=curwin[1]))
            #change he z order
@@ -516,7 +526,7 @@ class PlotClass(object):
            locs = igps.dataloc[igpslist]
            x, y = m(locs[:,1], locs[:,0])
            
-           keepboth =  x>m.xmin&x<m.xmax&y>m.ymin&y<m.ymax
+           keepboth =  (x>m.xmin)&(x<m.xmax)&(y>m.ymin)&(y<m.ymax)
            if keepboth.sum()==0:
                continue
            [xloc,yloc] = [x[keepboth][0],y[keepboth][0]]
@@ -527,10 +537,19 @@ class PlotClass(object):
         
         
     def writeiniclass(self,fname):
+        """ The method for the class that calls the writeini function.
+            Inputs
+                fname - The name of the file it will be written out to.
+        """
         writeini(self.params,fname)
 #%% Write out file
 def writeini(params,fname):
-    
+    """ This will write out a structured ini file that can be used by the PlotClass
+        to fill its dictionary of parameters. 
+        Inputs
+            params - A dictionary that holds the parameters for the PlotClass.
+            fname - The name of the file it will be written out to.
+    """
     cfgfile = open(fname,'w')
     config = ConfigParser.ConfigParser(allow_no_value = True)
     
@@ -652,9 +671,32 @@ def str2posix(timelist):
     return [dt1ts,dt2ts]
     
 def posix2str(posixlist):
+    """ This function will chnage a list of posix times to a string in 
+        %m/%d/%Y %H:%M:%S year format.
+        Inputs
+            posixlist - Length 2 list of posix times.
+        Outputs
+            data - A string of times.  
+    """
     dts = map(datetime.utcfromtimestamp, posixlist)
     data = [datetime.strftime(dts[0],'%m/%d/%Y %H:%M:%S'), datetime.strftime(dts[1],'%m/%d/%Y %H:%M:%S')]
     return data
+
+def runPlotClass(inifile,plotdir, gpsloc=None,ASloc=None,ISRloc=None):
+    """ This will create a figure and axis and use the PlotClass to make images 
+        of the data.
+        Inputs
+         GPSloc - The directory that holds all of the iono files. 
+        ASloc - This can be either a directory holding the FITS files or a 
+            h5 file thats been pre interpolated.
+        ISRloc - This can be either a file from SRI or an h5 file
+            thats been pre interpolated.
+    """
+    (fig,axmat) = plt.subplots(1,1,figsize=(16,12),facecolor='w')
+    PC = PlotClass(inifile,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
+    m=PC.plotmap(fig,axmat)
+    PC.plotalldata(plotdir,m,axmat,fig)
+    plt.close(fig)
 if __name__== '__main__':
     
     from argparse import ArgumentParser
@@ -691,8 +733,4 @@ if __name__== '__main__':
     plotdir=os.path.expanduser(p.pdir)
     inifile = os.path.expanduser(p.config)
     
-    (fig,axmat) = plt.subplots(1,1,figsize=(16,12),facecolor='w')
-    PC = PlotClass(inifile,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc)
-    m=PC.plotmap(fig,axmat)
-    PC.plotalldata(plotdir,m,axmat,fig)
-    plt.close(fig)
+    runPlotClass(inifile,plotdir,gpsloc,ASloc,ISRloc)
