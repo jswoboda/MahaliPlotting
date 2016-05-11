@@ -17,10 +17,11 @@ import matplotlib.colors as colors
 import pytz
 from datetime import datetime
 from dateutil import parser
+import h5py
 from mpl_toolkits.basemap import Basemap
 from GeoData.plotting import scatterGD, slice2DGD,insertinfo, contourGD
 from GeoData.GeoData import GeoData
-from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5
+from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5,readMahalih5,read_h5_main
 from copy import copy
 INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','ISRLatnum','ISRLonnum','wl','TextList']
 
@@ -70,32 +71,57 @@ class PlotClass(object):
         """ This function will read in the GPS data from ionofiles. It will assign 
             the class variable GDGPS to the resultant GeoData object.
             Input
-                GPSloc - The directory that holds all of the iono files. """
+                GPSloc - The directory that holds all of the iono/h5 GeoData files. 
+                    Can also be the filename of a mahali gps file 
+        """
+        self.numGD+=1
         if GPSloc is None:
             return
         
-        if not os.path.isdir(os.path.expanduser(GPSloc)):
-            print('GPS path is not a directory')
-            return
-        self.numGD+=1
-        print('Reading in GPS Data')
         timelim=self.params['timebounds']
         TEClist = []
-        TECfiles = glob.glob(os.path.join(GPSloc,'*.iono'))
-
-        for ifile in TECfiles:
-            TECGD = GeoData(readIonofiles,(ifile,))
-            if timelim is not None:
-                TECGD.timereduce(timelim)
+        ish5file = os.path.isfile(GPSloc) & (os.path.splitext(GPSloc)[-1]=='.h5')
+        if ish5file:
+            print('Reading in GPS Data')
+            f = h5py.File(GPSloc, "r", libver='latest')
+            siteinfo = f['sites'].value
+            GPSNames = [i[0] for i in siteinfo]
+            for isite in GPSNames:
+                TECGD = GeoData(readMahalih5,(GPSloc,isite))
+                if timelim is not None:
+                    TECGD.timereduce(timelim)
                 
-            if len(TECGD.times)==0:
-                continue
-            TEClist.append(TECGD)
-            
-        # Determine the reciver names
-        self.GPSNames = [os.path.splitext(os.path.split(i)[-1])[0].split('-')[0] for i in TECfiles]
-        self.GDGPS = TEClist
-        print('Finished Reading in GPS Data')
+                if len(TECGD.times)==0:
+                    continue
+                TEClist.append(TECGD)
+            self.GPSNames = GPSNames
+            self.GDGPS = TEClist
+            print('Finished Reading in GPS Data')
+        elif os.path.isdir(os.path.expanduser(GPSloc)):
+            print('Reading in GPS Data')
+            # Read in either iono files or h5 files
+            TECfiles = glob.glob(os.path.join(GPSloc,'*.iono'))
+            funcname = readIonofiles
+            if len(TECfiles) ==0:
+                TECfiles = glob.glob(os.path.join(GPSloc,'*.h5'))
+                funcname = read_h5_main
+            for ifile in TECfiles:
+                TECGD = GeoData(funcname,(ifile,))
+                if timelim is not None:
+                    TECGD.timereduce(timelim)
+                    
+                if len(TECGD.times)==0:
+                    continue
+                TEClist.append(TECGD)
+                
+            # Determine the receiver names
+            self.GPSNames = [os.path.splitext(os.path.split(i)[-1])[0].split('-')[0] for i in TECfiles]
+            self.GDGPS = TEClist
+            print('Finished Reading in GPS Data')
+        else:
+            print('GPS path is not a directory')
+            return
+        
         
     def ASRead(self,ASloc):
         """ This function will read in the All sky data from FITS files or structured
