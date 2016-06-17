@@ -21,7 +21,7 @@ from itertools import chain
 from datetime import datetime, timedelta
 from pandas import DataFrame,Panel,Series,Panel4D
 from pandas.io.pytables import read_hdf
-from os.path import splitext,expanduser
+from os.path import splitext,expanduser,getsize
 from io import BytesIO
 import time
 
@@ -33,7 +33,7 @@ def rinexobs(obsfn,writeh5=None,maxtimes=None):
             lines = f.read().splitlines(True)
             lines.append('')
             header,version,headlines,obstimes,sats,svset = scan(lines)
-            print('{} is a RINEX {} file.'.format(obsfn,version))
+            print('{} is a RINEX {} file, {} kB.'.format(obsfn,version,getsize(obsfn)/1000.0))
             data = processBlocks(lines,header,obstimes,svset,headlines,sats)
             print("finished in {0:.2f} seconds".format(time.time()-t))
     #%% save to disk (optional)
@@ -74,15 +74,27 @@ def scan(lines):
     while True:
         if not lines[i]: break
         if not int(lines[i][28]):
+            #no flag or flag=0
             headlines.append(i)
             obstimes.append(_obstime([lines[i][1:3],lines[i][4:6],
                                    lines[i][7:9],lines[i][10:12],
                                    lines[i][13:15],lines[i][16:26]]))
-            sats.append([int(lines[i][33+s*3:35+s*3]) for s in range(int(lines[i][30:32]))])                
-# MAKE SURE TO FIX FOR MORE THAN 12 SVS
-            i+=int(lines[i][30:32])*int(np.ceil(header['# / TYPES OF OBSERV'][0]/5))+1
+            numsvs = int(lines[i][30:32])
+            if(numsvs>12):
+                sats.append([int(lines[i][33+s*3:35+s*3]) for s in range(12)])
+                i += 1
+                sats.append([int(lines[i][33+s*3:35+s*3]) for s in range(numsvs-12)])
+            else:
+                sats.append([int(lines[i][33+s*3:35+s*3]) for s in range(numsvs)])
+        
+            i+=numsvs*int(np.ceil(header['# / TYPES OF OBSERV'][0]/5))+1
         else:
-            i+=int(lines[i][30:32])+1
+            #there was a comment or some header info
+            flag=int(lines[i][28])
+            if(flag!=4):
+                print(flag)
+            skip=int(lines[i][30:32])
+            i+=skip+1
     for s in sats:
         svset = svset.union(set(s))
 
@@ -141,6 +153,5 @@ def _block2df(block,obstypes,svnames,svnum):
 
     data = np.vstack(([data.T],[lli.T],[ssi.T])).T
 
-    #FIXME: I didn't return the "signal strength" and "lock indicator" columns
     return data
 
