@@ -205,7 +205,7 @@ class satelliteBias:
                     bias = float(items[1])*conversionFactor
                     dataFound = 1
                     # add this data to dict
-                    self.dict[sv] = bias
+                    self.dict[(sv,0)] = bias
                 except:
                     if dataFound == 0:
                         # no valid lines found
