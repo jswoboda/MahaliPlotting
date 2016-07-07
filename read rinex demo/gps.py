@@ -13,10 +13,11 @@ from pandas.io.pytables import read_hdf
 from os.path import splitext,expanduser,getsize
 from io import BytesIO
 import time
+import CoordTransforms3 as CT
 
 f1 = 1575.42E6 #MHz
 f2 = 1227.6E6  #MHz
-def getRanges(data,svn,maxgap=3,maxjump=2.0): 
+def getRanges(data,svn,maxgap=3,maxjump=1.0): 
     if c2p2(data,svn):
         nans = np.logical_or.reduce((np.isnan(data[:,svn,'L1','data']),
                                      np.isnan(data[:,svn,'L2','data']),
@@ -32,11 +33,10 @@ def getRanges(data,svn,maxgap=3,maxjump=2.0):
     end=[]
     phase=2.85E9*(data[:,svn,'L1','data']/f1-data[:,svn,'L2','data']/f2)
     lgi=0
-
     for i in range(len(nans)):
         if inarc:
             if nans[i]:
-                if i-lgi>maxjump:
+                if i-lgi>maxgap:
                     inarc=False
                     end.append(lgi)
             else:
@@ -50,7 +50,7 @@ def getRanges(data,svn,maxgap=3,maxjump=2.0):
                 inarc=True
                 start.append(i)
                 lgi=i
-                
+    if len(start)!=len(end): end.append(i)
     ranges = [(data.labels[a],data.labels[b]) for a,b in zip(start,end)]
 
     return ranges
@@ -133,7 +133,7 @@ def getRangesalt(data,site,maxgap=3,maxjump=2.0):
     for i in range(len(nans)):
         if inarc:
             if nans[i]:
-                if i-lgi>maxjump:
+                if i-lgi>maxgap:
                     inarc=False
                     end.append(lgi)
             else:
@@ -147,7 +147,8 @@ def getRangesalt(data,site,maxgap=3,maxjump=2.0):
                 inarc=True
                 start.append(i)
                 lgi=i
-                
+    
+    if len(start)!=len(end): end.append(i)
     ranges = [(data.items[a],data.items[b]) for a,b in zip(start,end)]
 
     return ranges
@@ -282,7 +283,7 @@ class satelliteBias:
 
 
 
-def rinexobs(obsfn,writeh5=None,maxtimes=None):
+def rinexobs(obsfn,returnHead=False,writeh5=None,maxtimes=None):
     stem,ext = splitext(expanduser(obsfn))
     if ext[-1].lower() == 'o': #raw text file
         with open(obsfn,'r') as f:
@@ -300,8 +301,12 @@ def rinexobs(obsfn,writeh5=None,maxtimes=None):
             data.to_hdf(h5fn,key='OBS',mode='a',complevel=6,append=False)
     elif ext.lower() == '.h5':
         data = read_hdf(obsfn,key='OBS')
-        print('loaded OBS data from {} to {}'.format(blocks.items[0],blocks.items[-1]))
-    return data
+        print('loaded OBS data from {} to {}'.format(blocks.items[0],
+                                                     blocks.items[-1]))
+    if returnHead:
+        return header,data
+    else:
+        return data
 
 
 # this will scan the document for the header info and for the line on
@@ -464,12 +469,13 @@ def readRinexNav(fn,writeh5=None):
     strio = BytesIO(raws.encode())
     darr = np.genfromtxt(strio,delimiter=nfloat)
 
-    nav= DataFrame(np.hstack((np.asarray(sv,int)[:,None],darr)), epoch,
-               ['sv','SVclockBias','SVclockDrift','SVclockDriftRate','IODE',
+    nav= DataFrame(darr, epoch,
+               ['SVclockBias','SVclockDrift','SVclockDriftRate','IODE',
                 'Crs','DeltaN','M0','Cuc','Eccentricity','Cus','sqrtA','TimeEph',
                 'Cic','OMEGA','CIS','Io','Crc','omega','OMEGA DOT','IDOT',
                 'CodesL2','GPSWeek','L2Pflag','SVacc','SVhealth','TGD','IODC',
                 'TransTime','FitIntvl'])
+    nav['sv'] = Series(np.asarray(sv,int), index=nav.index)
 
     if writeh5:
         h5fn = stem + '.h5'
@@ -478,3 +484,185 @@ def readRinexNav(fn,writeh5=None):
 
     return nav
 
+def getSatXYZ(nav,sv,times):
+    allSvInfo = nav[nav['sv']==sv] 
+    timesarray = np.asarray(times,dtype='datetime64[ms]')
+    navtimes = np.asarray(allSvInfo.index,dtype='datetime64[ms]')
+    bestephind = np.array([np.argmin(abs(navtimes-t)) for t in timesarray])
+    info = np.asarray(allSvInfo)[bestephind]
+    info = DataFrame(info,index=times,columns=allSvInfo.columns)
+    info['sv'] = sv
+    info['gpstime'] = np.array([getGpsTime(t) for t in times])
+    # constants
+    GM = 3986005.0E8 # universal gravational constant
+    OeDOT = 7.2921151467E-5
+    
+    #Basic Parameters
+    t = info['gpstime']-info['TimeEph']
+    mu = info['M0']+t*(np.sqrt(GM/info['sqrtA']**6)+info['DeltaN'])
+    Ek = solveIter(mu,info['Eccentricity'])  
+    Vk = np.asarray(np.arctan2(np.sqrt(1.0-info['Eccentricity'])*np.sin(Ek),
+                               np.cos(Ek)-info['Eccentricity']),float)
+    PhiK = Vk + info['omega']
+    #Correct for orbital perturbations
+    omega = np.asarray(info['omega']+info['Cus']*np.sin(2.0*PhiK)
+             +info['Cuc']*np.cos(2.0*PhiK),float)
+    r = np.asarray((info['sqrtA']**2)*(1.0-info['Eccentricity']*np.cos(Ek))
+         +info['Crs']*np.sin(2.0*PhiK)+info['Crc']*np.cos(2.0*PhiK),float)
+    i = np.asarray(info['Io']+info['IDOT']*t+info['CIS']*np.sin(2.0*PhiK)
+         +info['Cic']*np.cos(2.0*PhiK),float)
+    
+    #Compute the right ascension
+    Omega = np.asarray(info['OMEGA']+(info['OMEGA DOT']-OeDOT)*t-(OeDOT*info['TimeEph']),float)
+    #Convert satellite position from orbital frame to ECEF frame
+    cosOmega = np.cos(Omega)
+    sinOmega = np.sin(Omega)
+    cosomega = np.cos(omega)
+    sinomega = np.sin(omega)
+    cosi = np.cos(i)
+    sini = np.sin(i)
+    cosVk = np.cos(Vk)
+    sinVk = np.sin(Vk)
+    R11 = cosOmega*cosomega - sinOmega*sinomega*cosi
+    R12 = -1.0*cosOmega*sinomega - sinOmega*cosomega*cosi
+    #R13 = np.sin(Omega)*np.sin(i)
+    R21 = sinOmega*cosomega + cosOmega*sinomega*cosi
+    R22 = -1.0*sinOmega*sinomega + cosOmega*cosomega*cosi
+    #R23 = -1.0*np.cos(Omega)*np.sin(i)
+    R31 = sinomega*sini
+    R32 = cosomega*sini
+    #R33 = np.cos(i)
+          
+    xyz = np.zeros((len(times),3))
+    for i in range(len(times)): #THIS IS THE SLOWEST PART NOW
+        rv = np.matrix([[r[i]*cosVk[i]],[r[i]*sinVk[i]],[0]])
+        R = np.matrix([[R11[i],R12[i],0],[R21[i],R22[i],0],[R31[i],R32[i],0]])
+        xyz[i] = (R*rv).A.astype(float).reshape((3,))
+        
+    return xyz
+
+def getGpsTime(dt):
+    """_getGpsTime returns gps time (seconds since midnight Sat/Sun) for a datetime
+    """
+    total = 0
+    days = (dt.weekday()+ 1) % 7 # this makes Sunday = 0, Monday = 1, etc.
+    total += days*3600*24
+    total += dt.hour * 3600
+    total += dt.minute * 60
+    total += dt.second
+    return(total)
+
+def solveIter(mu,e):
+    """__solvIter returns an iterative solution for Ek
+    Mk = Ek - e sin(Ek)
+    """
+    thisStart = np.asarray(mu-1.01*e)
+    thisEnd = np.asarray(mu + 1.01*e)
+    bestGuess = np.zeros(mu.shape)
+
+    for i in range(5): 
+        minErr = 10000*np.ones(mu.shape)
+        for j in range(5):
+            thisGuess = thisStart + j*(thisEnd-thisStart)/10.0
+            thisErr = np.asarray(abs(mu - thisGuess + e*np.sin(thisGuess)))
+            mask = thisErr<minErr
+            minErr[mask] = thisErr[mask]
+            bestGuess[mask] = thisGuess[mask]
+        
+        # reset for next loop
+        thisRange = thisEnd - thisStart
+        thisStart = bestGuess - thisRange/10.0
+        thisEnd = bestGuess + thisRange/10.0
+        
+    return(bestGuess)
+
+def getZ(el):
+    """getZ returns the mapping function given elevation in degrees and
+       fitting parameter.
+       Now fitting to equation:
+                              1
+           z =  ----------------------------
+                sqrt(1.0 - (fit * cos(el))^2)
+    """
+    fit = 0.95
+    term1 = 1 - (fit*np.cos(np.radians(el)))**2
+    return 1.0 / np.sqrt(term1) 
+
+def getEl(satpos,recpos):
+    recposwgs = CT.ecef2wgs(recpos)
+    satvecenu = CT.ecef2enul(np.asarray(satpos,float),recposwgs.T)
+    satveccart = CT.enu2cartisian(satvecenu)
+    satvecsph = CT.cartisian2Sphereical(satveccart)
+    el = satvecsph[2,:]
+    return el
+
+def minScalBias(head,data,nav,svBiasObj):
+    """
+    This function calculates receiver bias via the minimum scalloping
+    method. Inputs are the rinexobs head, rinexobs data, nav data, and an 
+    satellite bias object. Outputs the bias averaged from all satellites at
+    all times in the rinexobs data
+    """
+    
+    #NAVIGATION
+    recpos = np.asarray(head['APPROX POSITION XYZ'],float)[:,None]
+    
+    SvsUsed=0
+    bias=0
+    for sv in data.items:
+        print(sv,end='')
+        
+        try:
+            satpos = getSatXYZ(nav,sv,data.labels) #THIS IS A TEMPORARY FIX
+        except:
+            continue
+            
+        el = Series(getEl(satpos,recpos),index=data.labels)
+        
+        if(len(np.unique(np.asarray(el[el>29],int)))<30):
+            print('x',end=' ')
+            continue    # MAKE ADJUSTABLE OR JUST FIGURE OUT WHERE IT SHOULD BE
+            
+        SvsUsed+=1
+        print(' ',end='')
+        z = Series(getZ(el),index=data.labels)
+        #SLANT TEC
+        ranges = getRanges(data,sv)
+        teclist=[]
+        timelist=[]
+        for drange in ranges:
+            tec,err = getTec(data,sv,drange)
+            teclist.append(tec)
+            timelist.append(tec.index)
+    
+        if len(teclist)>0 and len(timelist)>0:
+            
+            stec = Series(np.hstack((p for p in teclist)),index=np.hstack((t for t in timelist)))
+            stec -= svBiasObj.dict[(sv,1)] #FIX SO SAT BIAS IS DIFFERENT DEPENDING ON WHICH SIGNAL IS USED
+        
+            #FIND SMALLEST ERROR AND WHICH BIAS CORRESPONDS TO IT
+            err=np.zeros((10,))
+            for i in range(10):
+                err[i] = minScalErr(stec[abs(stec)<100],el,z,-50+i*10) #MAKE THE FILTERING MORE CUSTOMIZABLE
+            startval=-50+np.argmin(abs(err))*10
+            for i in range(10):
+                err[i] = minScalErr(stec[abs(stec)<100],el,z,startval-5+i)
+            startval+=np.argmin(abs(err))-5
+            for i in range(10):
+                err[i] = minScalErr(stec[abs(stec)<100],el,z,startval-.5+.1*i)
+            bias += (np.argmin(abs(err))-5)*.1+startval
+        
+    return bias/SvsUsed
+        
+
+
+def minScalErr(stec,el,z,thisBias):
+            
+    intel=np.asarray(el[stec.index],int)
+    sTEC=np.asarray(stec,float)
+    zmap = z[stec.index]
+    c=np.array([(i,np.average((sTEC[intel==i]-thisBias)
+                              /zmap[intel==i])) for i in np.unique(intel) if i>30])
+    
+    return np.polyfit(c[:,0],c[:,1],1)[0]
+     
