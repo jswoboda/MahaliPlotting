@@ -25,6 +25,44 @@ from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5,readMa
 from copy import copy
 INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','ISRLatnum','ISRLonnum','wl','TextList']
 
+
+def vergeq(packagename,verstring):
+    """ 
+    This function will check if the version of a given package is higher than a given version number in string form.
+    Inputs
+        packagename - The name of the package to be tested.
+        verstring - The desired version in string form with numbers seperated by periods.
+    Output
+        boolcheck - A bool that determines the 
+    """
+    
+    pkg_ver = pkg_resources.get_distribution(packagename).version
+    # if the versions have the same string just return true
+    if pkg_ver==verstring:
+        return True
+    
+    pkg_list = pkg_ver.split('.')
+    verlist = verstring.split('.')
+    # Check each number in the string and see if any are larger in one or the other.
+    for i in range(min(len(verlist),len(pkg_list))):
+        if pkg_list[i] > verlist[i]:
+            return True
+        elif pkg_list[i]< verlist[i]:
+            return False
+    # incase the version number strings is larger than the other.
+    if len(pkg_list)>len(verlist):
+        return True
+    elif len(pkg_list)<len(verlist):
+        return False
+    # Return true because the numbers are equal but the strings may not be
+    return True
+
+if vergeq('matplotlib','1.5.1'):
+    defmap = 'plasma'
+else:
+    defmap = 'jet'
+defmap3d = 'jet'
+
 class PlotClass(object):
     """ This class will handle all of the reading , registration and plotting of data
     related to the mahali project. This is ment to be both the back end to a gui and 
@@ -465,7 +503,7 @@ class PlotClass(object):
                # check if there's anything to plot
                if len(igpslist)==0:
                    continue
-               (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'vTEC',cmap='plasma',fig=fig, ax=ax,title='',cbar=False,err=.1,m=m)
+               (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'vTEC',cmap=defmap,fig=fig, ax=ax,title='',cbar=False,err=.1,m=m)
                     
                gpshands.append(sctter)
            
