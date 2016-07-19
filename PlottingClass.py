@@ -87,7 +87,10 @@ class PlotClass(object):
             siteinfo = f['sites'].value
             GPSNames = [i[0] for i in siteinfo]
             for isite in GPSNames:
-                TECGD = GeoData(readMahalih5,(GPSloc,isite))
+                try:
+                    TECGD = GeoData(readMahalih5,(GPSloc,isite))
+                except:
+                    TECGD =  read_h5(os.path.join(GPSloc,isite))
                 if timelim is not None:
                     TECGD.timereduce(timelim)
                 
