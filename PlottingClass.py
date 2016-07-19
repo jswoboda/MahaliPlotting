@@ -23,6 +23,7 @@ from GeoData.plotting import scatterGD, slice2DGD,insertinfo, contourGD
 from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5,readMahalih5,read_h5_main
 from copy import copy
+import pkg_resources
 INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','gpslim','paramlim','reinterp','paramheight','ISRLatnum','ISRLonnum','wl','TextList']
 
 
