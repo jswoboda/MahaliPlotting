@@ -504,7 +504,7 @@ class PlotClass(object):
                # check if there's anything to plot
                if len(igpslist)==0:
                    continue
-               (sctter,scatercb) = scatterGD(igps,'alt',3.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'vTEC',cmap=defmap,fig=fig, ax=ax,title='',cbar=False,err=.1,m=m)
+               (sctter,scatercb) = scatterGD(igps,'alt',1.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'TEC',cmap=defmap,fig=fig, ax=ax,title='',cbar=False,err=.1,m=m)
                     
                gpshands.append(sctter)
            
@@ -766,6 +766,8 @@ def runPlotClass(inifile,plotdir, gpsloc=None,ASloc=None,ISRloc=None):
     m=PC.plotmap(fig,axmat)
     PC.plotalldata(plotdir,m,axmat,fig)
     plt.close(fig)
+
+
 if __name__== '__main__':
     
     from argparse import ArgumentParser
@@ -803,3 +805,4 @@ if __name__== '__main__':
     inifile = os.path.expanduser(p.config)
     
     runPlotClass(inifile,plotdir,gpsloc,ASloc,ISRloc)
+
