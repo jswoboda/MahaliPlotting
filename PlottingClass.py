@@ -8,6 +8,8 @@ Created on Sun Feb 28 15:56:10 2016
 import os, glob, sys, getopt
 import scipy as sp
 import ConfigParser
+import numpy as np
+from scipy.interpolate import griddata
 
 #import matplotlib
 #matplotlib.use('Agg') # for use where you're running on a command line
@@ -81,7 +83,7 @@ class PlotClass(object):
         GPSNames - The names of the GPS receivers.
         Regdict - A dictionary used to order all of the data. The keys are 
             TEC, AS, Time ISR. """
-    def __init__(self,inifile,GPSloc=None,ASloc=None,ISRloc=None):
+    def __init__(self,inifile,GPSloc=None,ASloc=None,ISRloc=None,nointerp=False):
         """ This will create an instance of a PlotClass object.
             Inputs
             inifile - The name of the ini file used for the the parameters.
@@ -90,6 +92,7 @@ class PlotClass(object):
                 h5 file thats been pre interpolated.
             ISRloc - This can be either a file from SRI or an h5 file
                 thats been pre interpolated."""
+        self.nointerp = nointerp
         self.inifile = inifile
         self.params = readini(inifile)
         # GeoData objects
@@ -174,7 +177,9 @@ class PlotClass(object):
             resultant GeoData object."""
         
         if ASloc is None:
-            return  
+            return
+
+            
         if not os.path.isdir(os.path.expanduser(ASloc)) and not os.path.isfile(os.path.expanduser(ASloc)):
             print('All Sky Data cannot be read')
             return
@@ -185,6 +190,16 @@ class PlotClass(object):
         interpsavedfile = os.path.join(ASloc,'interp'+wl+'.h5')
         reinterp=self.params['reinterp']
         timelim=self.params['timebounds']
+        
+        if self.nointerp:
+            filestr = os.path.join(ASloc,wlstr)
+            flist558 = glob.glob(filestr)
+            self.GDAS =  GeoData(readAllskyFITS,(flist558,
+                                                 ('PKR_DASC_20110112_AZ_10deg.FITS',
+                                                  'PKR_DASC_20110112_EL_10deg.FITS'),
+                                                 150.,timelim))
+            return
+            
         if reinterp or (not os.path.isfile(ASloc)):
             pfalla = sp.array([65.136667,-147.447222,689.])
     
@@ -192,7 +207,7 @@ class PlotClass(object):
             flist558 = glob.glob(filestr)
             if len(flist558)==0:
                 return
-            allsky_data = GeoData(readAllskyFITS,(flist558,('PKR_20111006_AZ_10deg.FITS','PKR_20111006_EL_10deg.FITS'),150.,timelim))
+            allsky_data = GeoData(readAllskyFITS,(flist558,('PKR_DASC_20110112_AZ_10deg.FITS','PKR_DASC_20110112_EL_10deg.FITS'),150.,timelim))
             if timelim is not None:
                 allsky_data.timereduce(timelim)
 
@@ -388,6 +403,135 @@ class PlotClass(object):
         
         self.Regdict=regdict
 #%% Plotting
+    def plotCircleData(self,plotdir,ax,fig):
+        timelist = self.Regdict['Time']
+        Nt = len(timelist)
+        strlen = int(sp.ceil(sp.log10(Nt))+1)
+        fmstr = '{0:0>'+str(strlen)+'}_'
+        plotnum=0
+        cbarax = []
+        for itime in range(Nt):
+            #plot the data
+            hands,cbarax = self.plotCircle(ax,fig,itime,cbarax)
+            print('Ploting {0} of {1} plots'.format(plotnum,Nt))
+            plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+'ASwGPS.png'))
+            plotnum+=1
+            for ihand in hands:
+                if hasattr(ihand, "__len__"):
+                    for ihand2 in ihand:
+                        ihand2.remove()
+                elif hasattr(ihand,'collections'):
+                    for ihand2 in ihand.collections:
+                        ihand2.remove()
+                else:
+                    ihand.remove()
+        # write out ini file to record plot parameters
+        ininame = os.path.split(self.inifile)[-1]
+        writeini(self.params,os.path.join(plotdir,ininame))
+
+    def plotCircle(self,ax,fig,timenum,cbarax): #CONSIDER DONIG THIS WITH POLAR PLOT/INTERPOLATION
+
+        allhands=[[]]
+        curwin=self.Regdict['Time'][timenum]
+        optbnds = self.params['aslim']
+        titlelist = []
+        if len(cbarax)==0:
+            wid = .3/self.numGD
+            cbarax=[fig.add_axes([.7+i*wid,.3,wid/2.,.4]) for i in range(self.numGD)]
+            fig.tight_layout(rect=[0,.05,.7,.95])
+        cbcur=0
+
+        #Plot AllSky Image
+        if not self.GDAS is None:         
+            iop = self.Regdict['AS'][timenum]
+            [r,az,el] = self.GDAS.dataloc.T
+            az = az%360
+            rel = 90-el
+            x = rel*np.sin(az*np.pi/180)
+            y = -rel*np.cos(az*np.pi/180)
+            grid_x, grid_y = np.mgrid[-80:80:400j, -80:80:400j]
+            asimg = griddata(np.array([x,y]).T,
+                             self.GDAS.data['image'].T[iop],
+                             (grid_x,grid_y),
+                             method='linear')
+
+            slice3 = ax.pcolormesh(grid_x,grid_y,asimg,cmap='summer',
+                                   vmin=optbnds[0],vmax=optbnds[1],
+                                   figure=fig)
+
+            ax.axis([-85,85,-85,85])
+            ax.axis('off')
+                   
+            titlelist.append(insertinfo('All Sky $tmdy $thmsehms',posix=self.GDAS.times[iop,0],posixend=self.GDAS.times[iop,1]))
+            cbaras = plt.colorbar(slice3,cax=cbarax[cbcur])
+            cbcur+=1
+            cbaras.set_label('All Sky Scale')
+            
+            allhands.append(slice3)
+
+        #Draw Polar Lines On Top
+        lines = []
+        ang = np.arange(0,180,.5)/np.pi
+        for i in np.arange(80,0,-20):
+            r = (y[np.logical_and(abs(x)<.5,abs(el-i)<.5)][0])
+            allhands.append(ax.plot(r*np.cos(ang),r*np.sin(ang),'k-',lw=.5,alpha=.5))
+            allhands.append(ax.text(0,abs(r)-3,str(i),alpha=.5))
+
+        angles = np.arange(0,180,30)
+        textangles = {iang:(str(np.mod(270+iang,360)),str(np.mod(90+iang,360))) for iang in angles}
+        maxy = np.max(y)
+        for iang in angles:
+            iangr = iang*np.pi/180
+            xs = np.array([maxy*np.cos(iangr+np.pi),-maxy*np.cos(iangr+np.pi)])
+            ys = np.array([maxy*np.sin(iangr+np.pi),-maxy*np.sin(iangr+np.pi)])
+            allhands.append(ax.plot(xs,ys,'k-',alpha=.5,lw=.5))
+            allhands.append(ax.text(1.05*xs[0]-2,1.05*ys[0]-2,textangles[iang][0],alpha=.5))
+            allhands.append(ax.text(1.05*xs[1]-2,1.05*ys[1]-2,textangles[iang][1],alpha=.5))
+
+
+        #Plot GPS Scatter
+        if not self.GDGPS is None:
+            gpshands = []
+            gpsbounds = self.params['gpslim']
+            for igps,igpslist in zip(self.GDGPS,self.Regdict['TEC'][timenum]):
+                # check if there's anything to plot
+                if len(igpslist)==0:
+                    continue
+                az = igps.data['az2sat']
+                rel = 90-igps.data['el2sat']
+                x = rel*np.sin(az*np.pi/180)
+                y = -rel*np.cos(az*np.pi/180)
+                sctter = ax.scatter(x[igpslist],y[igpslist],
+                                    c=igps.data['TEC'][igpslist],
+                                    cmap=defmap,vmin=gpsbounds[0],
+                                    vmax=gpsbounds[1],figure=fig)
+                satnames=[]
+                for i in igpslist:
+                    if igps.data['satnum'][i] in satnames: continue
+                    allhands.append(ax.text(x[i]+1,y[i]+1,str(int(igps.data['satnum'][i]))))
+                gpshands.append(sctter)
+                
+                if('lol' in igps.data):
+                    for i in igpslist:
+                        if(igps.data['lol'][i].any()):
+                            Xdata = x[i]
+                            Ydata = y[i]
+                            gpshands.append(ax.plot(Xdata,Ydata,'kx',markersize=12)[0])
+                
+            if len(gpshands)>0:
+                scatercb = plt.colorbar(sctter,cax=cbarax[cbcur])
+               
+                scatercb.set_label('TEC in TECu')
+            cbcur+=1 
+            allhands[0]=gpshands
+            
+            titlelist.append( insertinfo('GPS $tmdy $thmsehms',posix=curwin[0],posixend=curwin[1]))
+
+        
+        ax.set_title('\n'.join(titlelist) )
+        return allhands,cbarax
+
+                   
     def plotmap(self,fig,ax):
         """ This function will plot the map of Alaska. The data will be plotted
             over it and will use the basemap class to position everything.
@@ -497,31 +641,42 @@ class PlotClass(object):
             fig.tight_layout(rect=[0,.05,.7,.95])
         cbcur=0
         if not self.GDGPS is None:
-            
-           gpshands = []
-           gpsbounds = self.params['gpslim']
-           for igps,igpslist in zip(self.GDGPS,self.Regdict['TEC'][timenum]):
-               # check if there's anything to plot
-               if len(igpslist)==0:
-                   continue
-               (sctter,scatercb) = scatterGD(igps,'alt',1.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'TEC',cmap=defmap,fig=fig, ax=ax,title='',cbar=False,err=.1,m=m)
-                    
-               gpshands.append(sctter)
-           
-           
-           
+            gpshands = []
+            gpsbounds = self.params['gpslim']
+            for igps,igpslist in zip(self.GDGPS,self.Regdict['TEC'][timenum]):
+                # check if there's anything to plot
+                if len(igpslist)==0:
+                    continue
+                (sctter,scatercb) = scatterGD(igps,'alt',1.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'TEC',cmap=defmap,fig=fig, ax=ax,title='',cbar=False,err=.1,m=m)
+                                                   
+                gpshands.append(sctter)
+                """
+		Plot Position of Mah8
+                y = 64.971
+		x = 212.567-360
+		xd,yd = m(x,y)
+		gpshands.append(ax.plot(xd,yd,'rx',markersize=15)[0])
+		"""
+                if('lol' in igps.data):
+                    for i in igpslist:
+                        if(igps.data['lol'][i].any()):
+                            ydata = igps.dataloc[i][0]
+                            xdata = igps.dataloc[i][1]
+                            Xdata,Ydata = m(xdata,ydata)
+                            gpshands.append(ax.plot(Xdata,Ydata,'kx',markersize=12)[0])
+        
              
-           # If no gps data plots dont try to plot the color bar
-           if len(gpshands)>0:
-               scatercb = plt.colorbar(sctter,cax=cbarax[cbcur])
+            # If no gps data plots dont try to plot the color bar
+            if len(gpshands)>0:
+                scatercb = plt.colorbar(sctter,cax=cbarax[cbcur])
                
-               scatercb.set_label('vTEC in TECu')
-           cbcur+=1 
-           allhands[0]=gpshands
-           titlelist.append( insertinfo('GPS $tmdy $thmsehms',posix=curwin[0],posixend=curwin[1]))
-           #change he z order
+                scatercb.set_label('vTEC in TECu')
+            cbcur+=1 
+            allhands[0]=gpshands
+            titlelist.append( insertinfo('GPS $tmdy $thmsehms',posix=curwin[0],posixend=curwin[1]))
+            #change he z order
            
-           allhands[0]=gpshands
+            allhands[0]=gpshands
         
         if not self.GDAS is None:
             
@@ -767,6 +922,11 @@ def runPlotClass(inifile,plotdir, gpsloc=None,ASloc=None,ISRloc=None):
     PC.plotalldata(plotdir,m,axmat,fig)
     plt.close(fig)
 
+def runPlotClass2(inifile,plotdir,gpslic=None,ASloc=None,ISRloc=None):
+    (fig,ax) = plt.subplots(1,1,figsize=(16,12),facecolor='w')
+    PC = PlotClass(inifile,GPSloc=gpsloc,ASloc=ASloc,ISRloc=ISRloc,nointerp=True)
+    PC.plotCircleData(plotdir,ax,fig)
+    plt.close(fig)
 
 if __name__== '__main__':
     
@@ -804,5 +964,4 @@ if __name__== '__main__':
     plotdir=os.path.expanduser(p.pdir)
     inifile = os.path.expanduser(p.config)
     
-    runPlotClass(inifile,plotdir,gpsloc,ASloc,ISRloc)
-
+    runPlotClass2(inifile,plotdir,gpsloc,ASloc,ISRloc)
