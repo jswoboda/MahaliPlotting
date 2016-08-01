@@ -1,16 +1,17 @@
 #!/bin/sh
 
-#----- setup environ
+# we use this instead of setup.py so that GeoDataPython is also installed in develop mode.
 
-py2path=$(dirname $(which python2))
+conda install --file requirements.txt
+pip install pathlib2
 
-echo $py2path
+conda install -c menpo mayavi
 
-${py2path}/conda install --file requirements.txt
 (
 cd ..
 
 git clone https://github.com/jswoboda/GeoDataPython
 cd GeoDataPython
-python2 setup.py develop
+git pull #in case it was already installed
+python setup.py develop
 )
