@@ -30,20 +30,20 @@ INIOPTIONS = ['latbounds','lonbounds','timebounds','timewin','asgamma','aslim','
 
 
 def vergeq(packagename,verstring):
-    """ 
+    """
     This function will check if the version of a given package is higher than a given version number in string form.
     Inputs
         packagename - The name of the package to be tested.
         verstring - The desired version in string form with numbers seperated by periods.
     Output
-        boolcheck - A bool that determines the 
+        boolcheck - A bool that determines the
     """
-    
+
     pkg_ver = pkg_resources.get_distribution(packagename).version
     # if the versions have the same string just return true
     if pkg_ver==verstring:
         return True
-    
+
     pkg_list = pkg_ver.split('.')
     verlist = verstring.split('.')
     # Check each number in the string and see if any are larger in one or the other.
@@ -68,8 +68,8 @@ defmap3d = 'jet'
 
 class PlotClass(object):
     """ This class will handle all of the reading , registration and plotting of data
-    related to the mahali project. This is ment to be both the back end to a gui and 
-    the basic code used to run a whole set of data. The class will be given an 
+    related to the mahali project. This is ment to be both the back end to a gui and
+    the basic code used to run a whole set of data. The class will be given an
     ini file and location of data sets. The ini file will hold information regaurding
     the plotting and data registration.
     Variables:
@@ -81,14 +81,14 @@ class PlotClass(object):
         GDAS - A GeodData object for the AllSky data. The default value is None.
         numGD - The number of Sensor classes avalible.
         GPSNames - The names of the GPS receivers.
-        Regdict - A dictionary used to order all of the data. The keys are 
+        Regdict - A dictionary used to order all of the data. The keys are
             TEC, AS, Time ISR. """
     def __init__(self,inifile,GPSloc=None,ASloc=None,ISRloc=None,nointerp=False):
         """ This will create an instance of a PlotClass object.
             Inputs
             inifile - The name of the ini file used for the the parameters.
-            GPSloc - The directory that holds all of the iono files. 
-            ASloc - This can be either a directory holding the FITS files or a 
+            GPSloc - The directory that holds all of the iono files.
+            ASloc - This can be either a directory holding the FITS files or a
                 h5 file thats been pre interpolated.
             ISRloc - This can be either a file from SRI or an h5 file
                 thats been pre interpolated."""
@@ -107,19 +107,19 @@ class PlotClass(object):
         self.ISRRead(ISRloc)
         # Time Register everyting
         self.RegisterData()
-    
-  #%% Read in data      
+
+  #%% Read in data
     def GPSRead(self,GPSloc):
-        """ This function will read in the GPS data from ionofiles. It will assign 
+        """ This function will read in the GPS data from ionofiles. It will assign
             the class variable GDGPS to the resultant GeoData object.
             Input
-                GPSloc - The directory that holds all of the iono/h5 GeoData files. 
-                    Can also be the filename of a mahali gps file 
+                GPSloc - The directory that holds all of the iono/h5 GeoData files.
+                    Can also be the filename of a mahali gps file
         """
         self.numGD+=1
         if GPSloc is None:
             return
-        
+
         timelim=self.params['timebounds']
         TEClist = []
         ish5file = os.path.isfile(GPSloc) & (os.path.splitext(GPSloc)[-1]=='.h5')
@@ -135,7 +135,7 @@ class PlotClass(object):
                     TECGD =  read_h5(os.path.join(GPSloc,isite))
                 if timelim is not None:
                     TECGD.timereduce(timelim)
-                
+
                 if len(TECGD.times)==0:
                     continue
                 TEClist.append(TECGD)
@@ -154,11 +154,11 @@ class PlotClass(object):
                 TECGD = GeoData(funcname,(ifile,))
                 if timelim is not None:
                     TECGD.timereduce(timelim)
-                    
+
                 if len(TECGD.times)==0:
                     continue
                 TEClist.append(TECGD)
-                
+
             # Determine the receiver names
             self.GPSNames = [os.path.splitext(os.path.split(i)[-1])[0].split('-')[0] for i in TECfiles]
             self.GDGPS = TEClist
@@ -166,20 +166,20 @@ class PlotClass(object):
         else:
             print('GPS path is not a directory')
             return
-        
-        
+
+
     def ASRead(self,ASloc):
         """ This function will read in the All sky data from FITS files or structured
             h5 files for GeoData.
             Input
-                ASloc - This can be either a directory holding the FITS files or a 
+                ASloc - This can be either a directory holding the FITS files or a
                 h5 file thats been pre interpolated. It will assign the class variable GDAS to the
             resultant GeoData object."""
-        
+
         if ASloc is None:
             return
 
-            
+
         if not os.path.isdir(os.path.expanduser(ASloc)) and not os.path.isfile(os.path.expanduser(ASloc)):
             print('All Sky Data cannot be read')
             return
@@ -190,7 +190,7 @@ class PlotClass(object):
         interpsavedfile = os.path.join(ASloc,'interp'+wl+'.h5')
         reinterp=self.params['reinterp']
         timelim=self.params['timebounds']
-        
+
         if self.nointerp:
             filestr = os.path.join(ASloc,wlstr)
             flist558 = glob.glob(filestr)
@@ -199,10 +199,10 @@ class PlotClass(object):
                                                   'PKR_DASC_20110112_EL_10deg.FITS'),
                                                  150.,timelim))
             return
-            
+
         if reinterp or (not os.path.isfile(ASloc)):
             pfalla = sp.array([65.136667,-147.447222,689.])
-    
+
             filestr = os.path.join(ASloc,wlstr)
             flist558 = glob.glob(filestr)
             if len(flist558)==0:
@@ -217,11 +217,11 @@ class PlotClass(object):
             lonlim=[xcoords[:,1].min(),xcoords[:,1].max()]
             nlat = 256
             nlon = 256
-    
+
             latvec = sp.linspace(latlim[0],latlim[1],nlat)
             lonvec = sp.linspace(lonlim[0],lonlim[1],nlon)
             [LATM,LONM] = sp.meshgrid(latvec,lonvec)
-    
+
             newcoords = sp.column_stack((LATM.flatten(),LONM.flatten(),150.*sp.ones(LONM.size)))
             allsky_data.interpolate(newcoords,'WGS84',method='linear',twodinterp=True)
             allsky_data.write_h5(interpsavedfile)
@@ -229,7 +229,7 @@ class PlotClass(object):
             allsky_data = GeoData.read_h5(ASloc)
             if timelim is not None:
                 allsky_data.timereduce(timelim)
-            
+
         self.GDAS = allsky_data
         print('Finished Reading in Allsky Data')
     def ISRRead(self,ISRloc):
@@ -245,9 +245,9 @@ class PlotClass(object):
             print('ISR Data is not a file')
             return
         self.numGD+=1
-        print('Reading in ISR Data') 
+        print('Reading in ISR Data')
         pnheights= self.params['paramheight']
-        
+
         paramstr = list(set([i[0] for i in pnheights]))
         try:
             SRIh5 = GeoData(readSRI_h5,(ISRloc,paramstr))
@@ -255,38 +255,38 @@ class PlotClass(object):
             try:
                 SRIh5 = GeoData.read_h5(ISRloc)
             except:
-                return                    
+                return
         dt1ts,dt2ts = self.params['timebounds']
-    
+
         timelist = sp.where((SRIh5.times[:,1]>=dt1ts)&(SRIh5.times[:,0]<=dt2ts))[0]
-    
+
         if len(timelist)==0:
             return
-    
+
         SRIh5 = SRIh5.timeslice(timelist)
-    
+
         hset = sp.array([i[1] for i in pnheights])
         uh,uhs =sp.unique(hset,return_inverse=True)
         uh=uh*1e3
         newcoordname = 'WGS84'
-        
+
         if not (SRIh5.coordnames.lower() == newcoordname.lower()):
             changed_coords = SRIh5.__changecoords__(newcoordname)
             latmin,latmax = [changed_coords[:,0].min(),changed_coords[:,0].max()]
             lonmin,lonmax = [changed_coords[:,1].min(),changed_coords[:,1].max()]
             latvec = sp.linspace(latmin,latmax,self.params['ISRLatnum'])
             lonvec = sp.linspace(lonmin,lonmax,self.params['ISRLonnum'])
-            
+
             LON,LAT = sp.meshgrid(lonvec,latvec)
             xycoords = sp.column_stack([LAT.flatten(),LON.flatten()])
                 # interpolation
             ncoords = xycoords.shape[0]
             uhall = sp.repeat(uh,ncoords)
-        
+
             coords = sp.tile(xycoords,(len(uh),1))
             coords = sp.column_stack((coords,uhall))
-        
-        
+
+
             SRIh5.interpolate(coords,newcoordname,method='linear')
         self.GDISR = SRIh5
         print('Finished Reading in ISR Data')
@@ -299,32 +299,32 @@ class PlotClass(object):
         tint=self.params['timewin']
         # make lists for plotting
         tectime = sp.arange(tbounds[0],tbounds[1],60.*tint)
-        
+
         nptimes= len(tectime)
         timelists = [[tectime[i],tectime[i+1]] for i in range(nptimes-1)]
         # teclist is a Ntime length list
-        teclist = [[]]*(nptimes-1) 
+        teclist = [[]]*(nptimes-1)
         regdict = {'TEC':teclist,'AS':[None]*(nptimes-1),'ISR':[None]*(nptimes-1),'Time':timelists}
-        
+
         if not self.GDGPS is None:
-           for itasn in range(len(tectime)-1):        
+           for itasn in range(len(tectime)-1):
                 itback=tectime[itasn]
                 itfor = tectime[itasn+1 ]
                 templist = [[]]*len(self.GDGPS)
                 for k in range(len(self.GDGPS)):
                     Geoone=self.GDGPS[k]
                     timevec = Geoone.times[:,0]
-        
+
                     templist[k] = sp.where(sp.logical_and(timevec>=itback, timevec<itfor))[0]
-                teclist[itasn]  =templist      
-            
+                teclist[itasn]  =templist
+
         if (not self.GDAS is None):
             GPS2AS=[sp.array([])]*(nptimes-1)
             GPS2ASlen = [0]*(nptimes-1)
             allskytime=self.GDAS.times[:,0]
-            
-            
-            for itasn in range(len(tectime)-1):    
+
+
+            for itasn in range(len(tectime)-1):
                 itback=tectime[itasn]
                 itfor = tectime[itasn+1]
                 itas = sp.where(sp.logical_and(allskytime>=itback, allskytime<itfor))[0]
@@ -335,7 +335,7 @@ class PlotClass(object):
                     itas = sp.array([itas[-1]])
                 GPS2AS[itasn] = itas
                 GPS2ASlen[itasn]=len(itas)
-                
+
             GPS2ASsingle = []
             teclist2 =[]
             timelist2 = []
@@ -351,7 +351,7 @@ class PlotClass(object):
             if (not self.GDISR is None):
                 self.GDAS=self.GDAS.timeslice(sp.unique(GPS2ASsingle))
                 as2radar =self.GDAS.timeregister(self.GDISR)
-                
+
                 teclist3=[]
                 timelist3=[]
                 GPS2ASsingle2=[]
@@ -362,19 +362,19 @@ class PlotClass(object):
                     teclist3=teclist3+[teclist2[j1]]*jlen
                     timelist3=timelist3+[timelist2[j1]]*jlen
                     GPS2ASsingle2 = GPS2ASsingle2+[GPS2ASsingle[j1]]*jlen
-                
+
                 regdict['TEC']=teclist3
                 regdict['AS']=GPS2ASsingle2
                 regdict['Time']=timelist3
                 regdict['ISR'] = AS2ISRsingle
-                
+
         elif (not self.GDISR is None):
             GPS2ISR=[sp.array([])]*(nptimes-1)
             GPS2ISRlen = [0]*(nptimes-1)
             isrtime=self.GDISR.times
-            
-           
-            for itasn in range(len(tectime)-1):          
+
+
+            for itasn in range(len(tectime)-1):
                 itback=tectime[itasn]
                 itfor = tectime[itasn+1]
                 #need to fix this
@@ -386,11 +386,11 @@ class PlotClass(object):
                     itas = sp.array([itas[-1]])
                 GPS2ISR[itasn] = itas
                 GPS2ISRlen[itasn]=len(itas)
-            
+
             GPS2ISRsingle = []
             teclist2 =[]
             timelist2 = []
-            
+
             #repeat for all sky values
             for i1,ilen in enumerate(GPS2ISRlen):
                 GPS2ISRsingle=GPS2ASsingle+GPS2ISR[i1].tolist()
@@ -400,7 +400,7 @@ class PlotClass(object):
             regdict['ISR']=GPS2ISRsingle
             regdict['Time']=timelist2
             regdict['AS']=[None]*len(timelist2)
-        
+
         self.Regdict=regdict
 #%% Plotting
     def plotCircleData(self,plotdir,ax,fig):
@@ -442,7 +442,7 @@ class PlotClass(object):
         cbcur=0
 
         #Plot AllSky Image
-        if not self.GDAS is None:         
+        if not self.GDAS is None:
             iop = self.Regdict['AS'][timenum]
             [r,az,el] = self.GDAS.dataloc.T
             az = az%360
@@ -461,12 +461,12 @@ class PlotClass(object):
 
             ax.axis([-85,85,-85,85])
             ax.axis('off')
-                   
+
             titlelist.append(insertinfo('All Sky $tmdy $thmsehms',posix=self.GDAS.times[iop,0],posixend=self.GDAS.times[iop,1]))
             cbaras = plt.colorbar(slice3,cax=cbarax[cbcur])
             cbcur+=1
             cbaras.set_label('All Sky Scale')
-            
+
             allhands.append(slice3)
 
         #Draw Polar Lines On Top
@@ -497,7 +497,7 @@ class PlotClass(object):
                 # check if there's anything to plot
                 if len(igpslist)==0:
                     continue
-                az = igps.data['az2sat']
+                az = igps.data['az2sat'] % 360
                 rel = 90-igps.data['el2sat']
                 x = rel*np.sin(az*np.pi/180)
                 y = -rel*np.cos(az*np.pi/180)
@@ -510,28 +510,28 @@ class PlotClass(object):
                     if igps.data['satnum'][i] in satnames: continue
                     allhands.append(ax.text(x[i]+1,y[i]+1,str(int(igps.data['satnum'][i]))))
                 gpshands.append(sctter)
-                
+
                 if('lol' in igps.data):
                     for i in igpslist:
                         if(igps.data['lol'][i].any()):
                             Xdata = x[i]
                             Ydata = y[i]
                             gpshands.append(ax.plot(Xdata,Ydata,'kx',markersize=12)[0])
-                
+
             if len(gpshands)>0:
                 scatercb = plt.colorbar(sctter,cax=cbarax[cbcur])
-               
+
                 scatercb.set_label('TEC in TECu')
-            cbcur+=1 
+            cbcur+=1
             allhands[0]=gpshands
-            
+
             titlelist.append( insertinfo('GPS $tmdy $thmsehms',posix=curwin[0],posixend=curwin[1]))
 
-        
+
         ax.set_title('\n'.join(titlelist) )
         return allhands,cbarax
 
-                   
+
     def plotmap(self,fig,ax):
         """ This function will plot the map of Alaska. The data will be plotted
             over it and will use the basemap class to position everything.
@@ -552,7 +552,7 @@ class PlotClass(object):
     #    m.drawstates()
     #    m.drawcountries()
         shp_info = m.readshapefile('st99_d00','states',drawbounds=True)
-        
+
         merstep = sp.round_((lonlim2[1]-lonlim2[0])/5.)
         parstep = sp.round_((latlim2[1]-latlim2[0])/5.)
         meridians=sp.arange(lonlim2[0],lonlim2[1],merstep)
@@ -561,19 +561,19 @@ class PlotClass(object):
         mrdhand = m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
         plt.hold(True)
         return m
-        
+
     def plotalldata(self,plotdir,m,ax,fig):
         """ This method will plot all of the images from the time period specified.
-            The png files will be numbered and have the ISR parameter name in 
+            The png files will be numbered and have the ISR parameter name in
             the title. The user can easily manipulate the files using comand line.
-            Inputs 
-                plotdir - This is the directory that all of the plots will be saved 
+            Inputs
+                plotdir - This is the directory that all of the plots will be saved
                     in.
                 m - The map object that will be used to orient the data.
                 fig - The figure handle for the plots.
                 ax - The axes handle that the map will be plotted over.
         """
-        
+
         timelist = self.Regdict['Time']
         Nt = len(timelist)
         strlen = int(sp.ceil(sp.log10(Nt))+1)
@@ -592,11 +592,11 @@ class PlotClass(object):
                 hands,cbarax = self.plotsingle(m,ax,fig,itime,icase,cbarax)
                 print('Ploting {0} of {1} plots'.format(plotnum,Nplot))
                 plt.savefig(os.path.join(plotdir,fmstr.format(plotnum)+paramstrs[icase]+'ASwGPS.png'))
-                
+
                 if itime in self.params['TextList']:
                     hands = self.plotgpsnames(m,ax,fig,hands,timenum=itime)
                     plt.savefig(os.path.join(plotdir,'wloctext' + fmstr.format(plotnum)+paramstrs[icase]+'ASwGPS.png'))
-                
+
                 for ihand in hands:
                     if hasattr(ihand, "__len__"):
                         for ihand2 in ihand:
@@ -610,7 +610,7 @@ class PlotClass(object):
         # write out ini file to record plot parameters
         ininame = os.path.split(self.inifile)[-1]
         writeini(self.params,os.path.join(plotdir,ininame))
-            
+
     def plotsingle(self,m,ax,fig,timenum=0,icase=0,cbarax=[]):
         """ Make single plot given the desired time and number associated with
             the desired ISR param.
@@ -622,18 +622,18 @@ class PlotClass(object):
                 icase - A list of list which determines which allsky times are used.
                 cbarax - The list of color bar axes.
             Outputs
-                allhands - The list handles of the plotted data. 
-                cbarax - A list of 
+                allhands - The list handles of the plotted data.
+                cbarax - A list of
         """
-        
+
 
         optbnds = self.params['aslim']
         gam=self.params['asgamma']
-        
+
         curwin=self.Regdict['Time'][timenum]
-        
+
         allhands = [[]]
-        
+
         titlelist = []
         if len(cbarax)==0:
             wid = .3/self.numGD
@@ -648,7 +648,7 @@ class PlotClass(object):
                 if len(igpslist)==0:
                     continue
                 (sctter,scatercb) = scatterGD(igps,'alt',1.5e5,vbounds=gpsbounds,time = igpslist,gkey = 'TEC',cmap=defmap,fig=fig, ax=ax,title='',cbar=False,err=.1,m=m)
-                                                   
+
                 gpshands.append(sctter)
                 """
 		Plot Position of Mah8
@@ -664,22 +664,22 @@ class PlotClass(object):
                             xdata = igps.dataloc[i][1]
                             Xdata,Ydata = m(xdata,ydata)
                             gpshands.append(ax.plot(Xdata,Ydata,'kx',markersize=12)[0])
-        
-             
+
+
             # If no gps data plots dont try to plot the color bar
             if len(gpshands)>0:
                 scatercb = plt.colorbar(sctter,cax=cbarax[cbcur])
-               
+
                 scatercb.set_label('vTEC in TECu')
-            cbcur+=1 
+            cbcur+=1
             allhands[0]=gpshands
             titlelist.append( insertinfo('GPS $tmdy $thmsehms',posix=curwin[0],posixend=curwin[1]))
             #change he z order
-           
+
             allhands[0]=gpshands
-        
+
         if not self.GDAS is None:
-            
+
             iop = self.Regdict['AS'][timenum]
             (slice3,cbar3) = slice2DGD(self.GDAS,'alt',150,optbnds,title='',
                                 time = iop,cmap='gray',gkey = 'image',fig=fig,ax=ax,cbar=False,m=m)
@@ -708,10 +708,10 @@ class PlotClass(object):
             cbh = plt.colorbar(plth,cax=cbarax[cbcur])
             cbh.set_label(iparam)
             if iparam.lower()!='ne':
-               
+
                 fmt= '%d'
-                
-                
+
+
             else:
 
                 plth.set_norm(colors.LogNorm(vmin=vbounds[icase][0],vmax=vbounds[icase][1]))
@@ -733,10 +733,10 @@ class PlotClass(object):
                 m - The map handle that is used to plot everything.
                 fig - The figure handle for the plots.
                 ax - The axes handle that the map will be plotted over.
-                allhands - The list handles of the plotted data. 
-                timenum - The of GeoData objects derived from the ionofiles.                
+                allhands - The list handles of the plotted data.
+                timenum - The of GeoData objects derived from the ionofiles.
             Outputs
-                allhands - The list handles of the plotted data. 
+                allhands - The list handles of the plotted data.
             """
         if self.GDGPS is None:
             return allhands
@@ -758,8 +758,8 @@ class PlotClass(object):
                     color='r'))
         allhands.append(namehands)
         return allhands
-        
-        
+
+
     def writeiniclass(self,fname):
         """ The method for the class that calls the writeini function.
             Inputs
@@ -769,18 +769,18 @@ class PlotClass(object):
 #%% Write out file
 def writeini(params,fname):
     """ This will write out a structured ini file that can be used by the PlotClass
-        to fill its dictionary of parameters. 
+        to fill its dictionary of parameters.
         Inputs
             params - A dictionary that holds the parameters for the PlotClass.
             fname - The name of the file it will be written out to.
     """
     cfgfile = open(fname,'w')
     config = ConfigParser.ConfigParser(allow_no_value = True)
-    
+
     config.add_section('params')
     config.add_section('paramsnames')
     for ip in INIOPTIONS:
-        
+
         if not ip in params.keys():
             continue
         elif ip=='timebounds':
@@ -816,12 +816,12 @@ def writeini(params,fname):
         config.set('paramsnames',ip,ip)
     config.write(cfgfile)
     cfgfile.close()
-    #%% Read in file        
+    #%% Read in file
 def readini(inifile):
     """ This function will read in data from a configureation file.
         Inputs
             inifile- The name of the configuration file.
-        Outputs 
+        Outputs
             params - A dictionary with keys from INIOPTIONS that holds all of
                 the plotting parameters.
     """
@@ -835,7 +835,7 @@ def readini(inifile):
         # get the parameter and split it up
         params[rname] = config.get('params',ip)
         params[rname]=params[rname].split(" ")
-        # If its a single object try to 
+        # If its a single object try to
         if len(params[rname])==1:
             params[rname]=params[rname][0]
             try:
@@ -848,7 +848,7 @@ def readini(inifile):
                     params[rname][a]=float(params[rname][a])
                 except:
                     pass
-    
+
     # turn the time bounds to time stamps
     if not params['timebounds']is None:
         timelist = params['timebounds']
@@ -856,10 +856,10 @@ def readini(inifile):
     # which times will have names
     if params['TextList'] is None:
         params['TextList']=[]
-    
-        
-        
-    # change param height to a list of lists 
+
+
+
+    # change param height to a list of lists
     if not params['paramheight'] is None:
         l1 = params['paramheight'][::2]
         l2 = params['paramheight'][1::2]
@@ -879,39 +879,39 @@ def str2posix(timelist):
     """ This will take a list of strings with the date along with a start and
         end time and make a list with the posix times.
         Inputs
-            timelist - A list of strings with the data followed by two times. 
+            timelist - A list of strings with the data followed by two times.
             The date for the second time can also be used, it will be at index
             2 and the second time will be at index 3.
         Outputs
             dtts - A list of posix times from the original inputs"""
     if len(timelist)==3:
         timelist.insert(2,timelist[0])
-        
+
     (dt1,dt2) = parser.parse(timelist[0]+ ' '+timelist[1]),parser.parse(timelist[2]+ ' '+timelist[3])
     dt1 =dt1.replace(tzinfo=pytz.utc)
     dt2 = dt2.replace(tzinfo=pytz.utc)
     dt1ts = (dt1 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
     dt2ts = (dt2 -datetime(1970,1,1,0,0,0,tzinfo=pytz.utc)).total_seconds()
     return [dt1ts,dt2ts]
-    
+
 def posix2str(posixlist):
-    """ This function will chnage a list of posix times to a string in 
+    """ This function will chnage a list of posix times to a string in
         %m/%d/%Y %H:%M:%S year format.
         Inputs
             posixlist - Length 2 list of posix times.
         Outputs
-            data - A string of times.  
+            data - A string of times.
     """
     dts = map(datetime.utcfromtimestamp, posixlist)
     data = [datetime.strftime(dts[0],'%m/%d/%Y %H:%M:%S'), datetime.strftime(dts[1],'%m/%d/%Y %H:%M:%S')]
     return data
 
 def runPlotClass(inifile,plotdir, gpsloc=None,ASloc=None,ISRloc=None):
-    """ This will create a figure and axis and use the PlotClass to make images 
+    """ This will create a figure and axis and use the PlotClass to make images
         of the data.
         Inputs
-         GPSloc - The directory that holds all of the iono files. 
-        ASloc - This can be either a directory holding the FITS files or a 
+         GPSloc - The directory that holds all of the iono files.
+        ASloc - This can be either a directory holding the FITS files or a
             h5 file thats been pre interpolated.
         ISRloc - This can be either a file from SRI or an h5 file
             thats been pre interpolated.
@@ -929,7 +929,7 @@ def runPlotClass2(inifile,plotdir,gpslic=None,ASloc=None,ISRloc=None):
     plt.close(fig)
 
 if __name__== '__main__':
-    
+
     from argparse import ArgumentParser
     descr = '''
              This script will run Mahali Plotting software. The user needs to
@@ -944,10 +944,10 @@ if __name__== '__main__':
     p.add_argument("-p", "--pdir",help='plot output directory',default=os.getcwd())
 
     p.add_argument('-r', "--radar",help='Radar hdf5 file',default=None)#action='store_true')
- 
+
     p.add_argument('-c',"--config",help='Config file name.')
     p = p.parse_args()
-    
+
     if p.ifile is None:
         gpsloc=p.ifile
     else:
@@ -960,8 +960,8 @@ if __name__== '__main__':
         ISRloc=p.radar
     else:
         ISRloc=os.path.expanduser(p.radar)
-   
+
     plotdir=os.path.expanduser(p.pdir)
     inifile = os.path.expanduser(p.config)
-    
+
     runPlotClass2(inifile,plotdir,gpsloc,ASloc,ISRloc)
