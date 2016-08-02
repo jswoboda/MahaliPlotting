@@ -39,10 +39,12 @@ def vergeq(packagename,verstring):
 
     return pkgr.parse_version(pkgr.get_distribution(packagename).version) > pkgr.parse_version(verstring)
 
-if vergeq('matplotlib','1.5'):
+try:
+    plt.get_cmap('plasma')
     defmap = 'plasma'
-else:
+except ValueError:
     defmap = 'jet'
+
 defmap3d = 'jet'
 
 class PlotClass(object):
