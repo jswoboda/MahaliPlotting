@@ -4,6 +4,7 @@ MahaliPlotting
 This holds sensor fusion plotting code for the Mahali project. 
 Python 3 or 2.7.
 
+.. contents::
 
 Requirements
 ============
@@ -16,6 +17,10 @@ Setup of program (can be issued for existing Python install)::
     ./setup.sh
 
 It is suggested that the user install the Miniconda/Anaconda distribution of python. 
+
+Get DASC raw data
+=================
+https://github.com/scienceopen/dascutils
 
 Use
 ===
