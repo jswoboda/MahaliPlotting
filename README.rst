@@ -20,7 +20,7 @@ It is suggested that the user install the Miniconda/Anaconda distribution of pyt
 
 Get DASC raw data
 =================
-https://github.com/scienceopen/dascutils
+https://github.com/scivision/dascutils
 
 Use
 ===
