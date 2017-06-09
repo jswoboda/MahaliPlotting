@@ -1,9 +1,9 @@
-from PyQt5.uic import loadUiType
-from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtCore import QSettings
+from PyQt4.uic import loadUiType
+from PyQt4.QtGui import QFileDialog
+from PyQt4.QtCore import QSettings
 
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import(
+from matplotlib.backends.backend_qt4agg import(
     FigureCanvasQTAgg as FigureCanvas,
     NavigationToolbar2QT as NavigationToolbar)
 
@@ -16,7 +16,7 @@ class Main(QMainWindow,Ui_MainWindow):
     def __init__(self,):
         super(Main,self).__init__()
         self.setupUi(self)
-
+        
         self.actionLoad.triggered.connect(self.loadCfg)
         self.ReadButton.clicked.connect(self.readInData)
         self.UpdateButton.clicked.connect(self.updatePlot)
@@ -69,12 +69,12 @@ class Main(QMainWindow,Ui_MainWindow):
         f = open(self.inifn,'w')
         f.write(str(self.ConfigBox.toPlainText()))
         f.close()
-
+        
         gpsloc = str(self.GPSBox.text())
         isrloc = str(self.ISRBox.text())
         asloc = str(self.AllSkyBox.text())
         self.PC = PlotClass(self.inifn,GPSloc=gpsloc,ASloc=asloc,ISRloc=isrloc)
-
+        
         self.strlist = [insertinfo( str(j)+' $tmdy $thmsehms',posix=i[0],posixend=i[1]) for j, i in enumerate(self.PC.Regdict['Time'])]
         self.TimeSlider.setMaximum(len(self.strlist)-1)
         self.TimeSlider.setTracking(False)
@@ -96,7 +96,7 @@ if __name__=='__main__':
     import sys
     from PyQt4 import QtGui
     import numpy as np
-
+    
     app = QtGui.QApplication(sys.argv)
     main = Main()
     main.show()
