@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+from sys import stderr
 import PyQt5
 from PyQt5.uic import loadUiType
 from PyQt5.QtWidgets import QFileDialog
@@ -66,7 +68,13 @@ class Main(QMainWindow,Ui_MainWindow):
         self.toolbar.close()
 
     def readInData(self):
-        f = open(self.inifn,'w')
+        try:
+            self.inifn
+        except AttributeError:
+            print('you must first load an .ini file',file=stderr)
+            return
+
+        f = self.inifn.open('w')
         f.write(str(self.ConfigBox.toPlainText()))
         f.close()
 

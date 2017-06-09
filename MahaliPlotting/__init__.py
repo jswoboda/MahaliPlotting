@@ -13,6 +13,7 @@ import scipy as sp
 from six.moves.configparser import ConfigParser as configparser
 import numpy as np
 from scipy.interpolate import griddata
+from sys import stderr
 
 #import matplotlib
 #matplotlib.use('Agg') # for use where you're running on a command line
@@ -113,14 +114,15 @@ class PlotClass(object):
         ish5file = GPSloc.is_file() and GPSloc.suffix=='.h5'
         if ish5file:
             print('Reading in GPS Data')
-            f = h5py.File(GPSloc, "r", libver='latest')
-            siteinfo = f['sites'].value
+            with h5py.File(GPSloc, "r", libver='latest') as f:
+                siteinfo = f['sites'].value
+
             GPSNames = [i[0] for i in siteinfo]
             for isite in GPSNames:
                 try:
                     TECGD = GeoData(readMahalih5,(GPSloc,isite))
                 except Exception:
-                    TECGD =  read_h5(os.path.join(GPSloc,isite))
+                    TECGD =  read_h5(GPSloc/isite)
                 if timelim is not None:
                     TECGD.timereduce(timelim)
 
@@ -133,7 +135,7 @@ class PlotClass(object):
         elif GPSloc.is_dir():
             print('Reading in GPS Data')
             # Read in either iono files or h5 files
-            TECfiles = GPSloc.glob('*.iono')
+            TECfiles = sorted(GPSloc.glob('*.iono'))
             funcname = readIonofiles
             if len(TECfiles) == 0:
                 TECfiles = GPSloc.glob('*.h5')
@@ -152,7 +154,7 @@ class PlotClass(object):
             self.GDGPS = TEClist
             print('Finished Reading in GPS Data')
         else:
-            print('GPS path is not a directory')
+            print('GPS path is not a directory',file=stderr)
             return
 
 
@@ -556,7 +558,7 @@ class PlotClass(object):
         parallels = sp.arange(latlim2[0],latlim2[1],parstep)
         m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
         m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
-        plt.hold(True)
+
         return m
 
     def plotalldata(self,plotdir,m,ax,fig):
