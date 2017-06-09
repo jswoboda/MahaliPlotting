@@ -3,7 +3,6 @@ from setuptools import setup
 
 # Note basemap 1.1 should be back on Pypi.
 req = ['nose','numpy','matplotlib','seaborn',
-       'pyqt',
        'basemap',
        ]
 

@@ -1,13 +1,13 @@
+import PyQt5
 from PyQt5.uic import loadUiType
 from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtCore import QSettings
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import(
     FigureCanvasQTAgg as FigureCanvas,
     NavigationToolbar2QT as NavigationToolbar)
 
-from PlottingClass import PlotClass
+from MahaliPlotting import PlotClass,Path
 from GeoData.plotting import insertinfo
 
 Ui_MainWindow,QMainWindow = loadUiType('MahaliGui.ui')
@@ -40,10 +40,10 @@ class Main(QMainWindow,Ui_MainWindow):
 
     def loadCfg(self):
         dlg = QFileDialog()
-        dlg.setFilter("Config Files (*.ini)")
-        self.inifn = str(dlg.getOpenFileName(self,'Open File','.','Config Files (*.ini)'))
-        if(self.inifn):
-            text = open(self.inifn,'r')
+        dlg.setNameFilters(["Config Files (*.ini)"])
+        self.inifn = Path(dlg.getOpenFileName(self,'Open File','.','Config Files (*.ini)')[0])
+        if self.inifn.is_file():
+            text = self.inifn.open('r')
             self.ConfigBox.setText(text.read())
             text.close()
 
@@ -94,10 +94,8 @@ class Main(QMainWindow,Ui_MainWindow):
 
 if __name__=='__main__':
     import sys
-    from PyQt4 import QtGui
-    import numpy as np
 
-    app = QtGui.QApplication(sys.argv)
+    app = PyQt5.QtWidgets.QApplication(sys.argv)
     main = Main()
     main.show()
     sys.exit(app.exec_())
