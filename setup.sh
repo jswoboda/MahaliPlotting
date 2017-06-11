@@ -10,3 +10,5 @@ cd GeoDataPython
 git pull #in case it was already installed
 python setup.py develop
 )
+
+python setup.py develop
