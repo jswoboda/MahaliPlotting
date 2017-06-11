@@ -13,7 +13,10 @@ matplotlib.use('Agg') # for use where you're running on a command line
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.dates import  DateFormatter, HourLocator#,YearLocator, MonthLocator,MinuteLocator
-from mpl_toolkits.basemap import Basemap
+try:
+    from mpl_toolkits.basemap import Basemap
+except ImportError:
+    Basemap=None
 #
 from GeoData.plotting import scatterGD, slice2DGD,insertinfo
 from GeoData.GeoData import GeoData
@@ -177,6 +180,10 @@ def setupmap(latlim2,lonlim2):
 
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_axes([0.1,0.1,0.8,0.8])
+
+    if Basemap is None:
+        return fig,ax,None
+
     # create polar stereographic Basemap instance.
     if not latlim2:
         latlim2=[-89.,89.]

@@ -23,7 +23,10 @@ import pytz
 from datetime import datetime
 from dateutil import parser
 import h5py
-from mpl_toolkits.basemap import Basemap
+try:
+    from mpl_toolkits.basemap import Basemap
+except ImportError:
+    Basemap=None
 from GeoData.plotting import scatterGD, slice2DGD,insertinfo, contourGD
 from GeoData.GeoData import GeoData
 from GeoData.utilityfuncs import readIonofiles, readAllskyFITS,readSRI_h5,readMahalih5,read_h5_main
@@ -540,6 +543,9 @@ class PlotClass(object):
             Output
                 m - This is the handle for the basemap object.
         """
+        if Basemap is None:
+            return
+
         latlim2 = self.params['latbounds']
         lonlim2 = self.params['lonbounds']
         m = Basemap(projection='merc',lon_0=sp.mean(lonlim2),lat_0=sp.mean(latlim2),\

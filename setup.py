@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from setuptools import setup
 
+# apt install libgeos-dev libgeos++-dev
 # Note basemap 1.1 should be back on Pypi.
 req = ['nose','numpy','matplotlib','seaborn','pytables','h5py','xarray','pandas', 'astropy','scipy','pyqt']
 pipreq=['basemap']
