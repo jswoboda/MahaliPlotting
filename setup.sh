@@ -1,11 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
 # we use this instead of setup.py so that GeoDataPython is also installed in develop mode.
-
-conda install --file requirements.txt
-pip install pathlib2
-
-conda install -c menpo mayavi
 
 (
 cd ..
